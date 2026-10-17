@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d3b2f">
+<title>am-i-in-gpx</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c2b24;
+    --ink-soft: #55665d;
+    --paper: #fbfbf7;
+    --paper-2: #eef0e8;
+    --forest: #1d3b2f;
+    --course: #b0219a;       /* orienteringsbanans magenta */
+    --me: #1f6fd1;
+    --line: rgba(28, 43, 36, .14);
+    --shadow: 0 2px 10px rgba(16, 30, 22, .22);
+    --font: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-title: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-l: env(safe-area-inset-left, 0px);
+    --safe-r: env(safe-area-inset-right, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e6ece7;
+      --ink-soft: #a4b2aa;
+      --paper: #1b231f;
+      --paper-2: #26302b;
+      --line: rgba(230, 236, 231, .14);
+      --shadow: 0 2px 12px rgba(0, 0, 0, .5);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--paper-2);
+    -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+  }
+  #map { position: fixed; inset: 0; }
+
+  /* Titelrad */
+  .titlebar {
+    position: fixed; z-index: 1000;
+    top: calc(10px + var(--safe-t)); left: calc(10px + var(--safe-l));
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 8px;
+    background: var(--forest); color: #f2f5ef;
+    border-radius: 999px; box-shadow: var(--shadow);
+    font-family: var(--font-title); font-weight: 600; font-size: 17px; letter-spacing: .01em;
+    pointer-events: none;
+  }
+  .titlebar svg { flex: none; }
+
+  /* Knappar nere till höger */
+  .fab-stack {
+    position: fixed; z-index: 1000;
+    right: calc(12px + var(--safe-r)); bottom: calc(20px + var(--safe-b));
+    display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+  }
+  .fab {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-width: 52px; height: 52px; padding: 0 16px;
+    border: none; border-radius: 26px;
+    background: var(--paper); color: var(--ink);
+    box-shadow: var(--shadow);
+    font: 600 15px/1 var(--font); cursor: pointer;
+  }
+  .fab.icon { padding: 0; width: 52px; }
+  .fab.primary { background: var(--course); color: #fff; }
+  .fab[aria-pressed="true"] { background: var(--me); color: #fff; }
+  .fab:focus-visible, .file-row button:focus-visible, .sheet-head button:focus-visible {
+    outline: 3px solid var(--me); outline-offset: 2px;
+  }
+  .fab svg { flex: none; }
+  .fab.locating svg { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* Fillista (nederkant) */
+  .sheet {
+    position: fixed; z-index: 1000;
+    left: calc(10px + var(--safe-l)); bottom: calc(20px + var(--safe-b));
+    width: min(340px, calc(100% - 96px - var(--safe-l) - var(--safe-r)));
+    max-height: 40vh; display: none; flex-direction: column;
+    background: var(--paper); color: var(--ink);
+    border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .sheet.has-files { display: flex; }
+  .sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 6px 6px 14px; border-bottom: 1px solid var(--line);
+    font-weight: 600; font-size: 14px;
+  }
+  .sheet-head button {
+    border: none; background: none; color: var(--ink-soft);
+    font: 500 14px var(--font); padding: 10px; cursor: pointer; border-radius: 8px;
+  }
+  .sheet.collapsed .file-list { display: none; }
+  .sheet.collapsed .sheet-head { border-bottom: none; }
+  .file-list { list-style: none; margin: 0; padding: 4px 0; overflow-y: auto; }
+  .file-row { display: flex; align-items: center; }
+  .file-row .zoom {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+    border: none; background: none; color: inherit; text-align: left;
+    padding: 10px 6px 10px 14px; font: 15px var(--font); cursor: pointer;
+  }
+  .file-row .swatch { flex: none; width: 14px; height: 4px; border-radius: 2px; }
+  .file-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-row .meta { color: var(--ink-soft); font-size: 13px; white-space: nowrap; margin-left: auto; }
+  .file-row .zoomto {
+    flex: none; width: 44px; height: 44px; border: none; background: none;
+    color: var(--ink-soft); cursor: pointer; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .file-row .zoomto:focus-visible, .file-row .remove:focus-visible, .pop-zoom:focus-visible {
+    outline: 3px solid var(--me); outline-offset: 2px;
+  }
+  .pop-zoom {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+    padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--paper-2); color: var(--ink); font: 600 14px var(--font); cursor: pointer;
+  }
+  .file-row .remove {
+    flex: none; width: 44px; height: 44px; border: none; background: none;
+    color: var(--ink-soft); font-size: 22px; line-height: 1; cursor: pointer; border-radius: 8px;
+  }
+
+  /* Tom vy / släpp-yta */
+  .hint {
+    position: fixed; z-index: 999;
+    left: 50%; top: calc(64px + var(--safe-t)); transform: translateX(-50%);
+    max-width: calc(100% - 24px);
+    padding: 10px 14px; border-radius: 10px;
+    background: var(--paper); color: var(--ink); box-shadow: var(--shadow);
+    font-size: 14px; text-align: center;
+  }
+  .hint[hidden] { display: none; }
+  .drop-overlay {
+    position: fixed; inset: 0; z-index: 2000; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(176, 33, 154, .18); border: 4px dashed var(--course);
+    font: 600 20px var(--font); color: var(--forest);
+  }
+  body.dragging .drop-overlay { display: flex; }
+
+  /* Meddelanden */
+  .toast {
+    position: fixed; z-index: 2000;
+    left: 50%; bottom: calc(96px + var(--safe-b)); transform: translateX(-50%) translateY(12px);
+    max-width: calc(100% - 24px);
+    padding: 10px 16px; border-radius: 10px;
+    background: var(--ink); color: var(--paper);
+    font-size: 14px; opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .2s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Leaflet-justeringar */
+  .leaflet-top { top: calc(var(--safe-t)); }
+  .leaflet-top.leaflet-right .leaflet-control { margin-top: 10px; margin-right: calc(10px + var(--safe-r)); }
+  .leaflet-control-zoom { display: none; } /* nyp-zoom på mobil; visas på större skärmar */
+  @media (min-width: 700px) and (hover: hover) {
+    .leaflet-control-zoom { display: block; }
+  }
+  .leaflet-control-layers {
+    border: none !important; border-radius: 12px !important; box-shadow: var(--shadow) !important;
+    background: var(--paper) !important; color: var(--ink) !important; font: 15px var(--font);
+  }
+  .leaflet-control-layers-toggle { width: 48px !important; height: 48px !important; }
+  .leaflet-control-layers-expanded { padding: 8px 12px 8px 8px; }
+  .leaflet-control-layers label { padding: 6px 0; }
+  .leaflet-bottom.leaflet-right { margin-bottom: var(--safe-b); }
+  .leaflet-control-attribution {
+    font-size: 10px; background: rgba(255,255,255,.75) !important;
+    max-width: 60vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .leaflet-control-attribution:hover, .leaflet-control-attribution:focus-within { white-space: normal; }
+  .leaflet-popup-content-wrapper { border-radius: 12px; background: var(--paper); color: var(--ink); }
+  .leaflet-popup-tip { background: var(--paper); }
+  .leaflet-container a.leaflet-popup-close-button { color: var(--ink-soft); }
+  .leaflet-popup-content { margin: 12px 16px; font: 14px/1.4 var(--font); }
+  .pop-file { font-weight: 600; font-size: 16px; word-break: break-word; }
+  .pop-sub { color: var(--ink-soft); margin-top: 2px; }
+
+  /* Positionsmarkör */
+  .me-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--me); border: 3px solid #fff;
+    box-shadow: 0 0 0 2px rgba(31,111,209,.35), 0 1px 4px rgba(0,0,0,.4);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fab.locating svg { animation: none; }
+    .toast { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div id="map" role="application" aria-label="Karta"></div>
+
+  <div class="titlebar">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="#f2f5ef" stroke-width="2"/>
+      <path d="M12 5 L15 12 L12 19 L9 12 Z" fill="#f2f5ef"/>
+    </svg>
+    am-i-in-gpx
+  </div>
+
+  <p class="hint" id="hint">Lägg till en eller flera GPX-filer för att se dem i kartan.</p>
+
+  <section class="sheet" id="sheet" aria-label="Inlästa filer">
+    <div class="sheet-head">
+      <span id="sheetTitle">Filer</span>
+      <div>
+        <button type="button" id="toggleList" aria-expanded="true">Dölj</button>
+        <button type="button" id="clearAll">Ta bort alla</button>
+      </div>
+    </div>
+    <ul class="file-list" id="fileList"></ul>
+  </section>
+
+  <div class="fab-stack">
+    <button type="button" class="fab icon" id="locateBtn" aria-pressed="false" aria-label="Visa min position" title="Visa min position">
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/>
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+      </svg>
+    </button>
+    <button type="button" class="fab primary" id="addBtn">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Lägg till GPX
+    </button>
+  </div>
+  <input type="file" id="fileInput" accept=".gpx,application/gpx+xml,application/xml,text/xml" multiple hidden>
+
+  <div class="drop-overlay" aria-hidden="true">Släpp GPX-filerna här</div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Bakgrundskartor (öppna och gratis) ---------- */
+  const osmAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bidragsgivare';
+  const baseLayers = {
+    'OpenStreetMap': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: osmAttr
+    }),
+    'Terräng (OpenTopoMap)': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17, subdomains: 'abc',
+      attribution: osmAttr + ', SRTM | Stil: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
+    }),
+    'Cykel och friluft (CyclOSM)': L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+      maxZoom: 20, subdomains: 'abc',
+      attribution: osmAttr + ' | Stil: <a href="https://www.cyclosm.org">CyclOSM</a>'
+    }),
+    'Ljus (CARTO)': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20, subdomains: 'abcd',
+      attribution: osmAttr + ' &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    })
+  };
+
+  const map = L.map('map', {
+    center: [62.5, 16.5], // Sverige
+    zoom: 5,
+    layers: [baseLayers['Terräng (OpenTopoMap)']],
+    zoomControl: true
+  });
+  map.zoomControl.setPosition('topright');
+  L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+  map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+
+  /* ---------- Hjälpfunktioner ---------- */
+  const palette = ['#b0219a', '#d1451f', '#1f6fd1', '#0f8a5f', '#7a3fd1', '#c27a00', '#008c9e', '#c4205a'];
+  let colorIndex = 0;
+
+  const $ = (id) => document.getElementById(id);
+  const toastEl = $('toast');
+  let toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3500);
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function byTag(node, tag) { return Array.from(node.getElementsByTagNameNS('*', tag)); }
+  function childText(node, tag) {
+    for (const c of node.children) if (c.localName === tag) return c.textContent.trim();
+    return '';
+  }
+  function toLatLngs(points) {
+    const out = [];
+    for (const p of points) {
+      const lat = parseFloat(p.getAttribute('lat'));
+      const lon = parseFloat(p.getAttribute('lon'));
+      if (Number.isFinite(lat) && Number.isFinite(lon)) out.push(L.latLng(lat, lon));
+    }
+    return out;
+  }
+  function lengthOf(latlngs) {
+    let d = 0;
+    for (let i = 1; i < latlngs.length; i++) d += latlngs[i - 1].distanceTo(latlngs[i]);
+    return d;
+  }
+  function fmtDist(m) {
+    return m >= 1000 ? (m / 1000).toLocaleString('sv-SE', { maximumFractionDigits: 1 }) + ' km'
+                     : Math.round(m) + ' m';
+  }
+
+  /* ---------- GPX-tolkning ---------- */
+  function parseGpx(text) {
+    const xml = new DOMParser().parseFromString(text, 'application/xml');
+    if (xml.getElementsByTagName('parsererror').length || !byTag(xml, 'gpx').length) {
+      throw new Error('inte en giltig GPX-fil');
+    }
+    const lines = [];
+    byTag(xml, 'trk').forEach((trk) => {
+      const name = childText(trk, 'name');
+      byTag(trk, 'trkseg').forEach((seg) => {
+        const ll = toLatLngs(byTag(seg, 'trkpt'));
+        if (ll.length > 1) lines.push({ kind: 'Spår', name, latlngs: ll });
+      });
+    });
+    byTag(xml, 'rte').forEach((rte) => {
+      const ll = toLatLngs(byTag(rte, 'rtept'));
+      if (ll.length > 1) lines.push({ kind: 'Rutt', name: childText(rte, 'name'), latlngs: ll });
+    });
+    const waypoints = byTag(xml, 'wpt').map((w) => {
+      const ll = toLatLngs([w])[0];
+      return ll ? { name: childText(w, 'name'), latlng: ll } : null;
+    }).filter(Boolean);
+    return { lines, waypoints };
+  }
+
+  /* ---------- Filhantering ---------- */
+  const loaded = []; // { id, name, color, group, bounds, length }
+  let nextId = 1;
+
+  function addGpx(fileName, text) {
+    const { lines, waypoints } = parseGpx(text);
+    if (!lines.length && !waypoints.length) throw new Error('filen innehåller inga spår, rutter eller punkter');
+
+    const id = nextId++;
+    const color = palette[colorIndex++ % palette.length];
+    const group = L.featureGroup();
+    let total = 0;
+
+    lines.forEach((ln) => {
+      const len = lengthOf(ln.latlngs);
+      total += len;
+      const sub = [ln.kind + (ln.name ? ': ' + ln.name : ''), fmtDist(len)].join(', ');
+      // Vit kontur under linjen gör den lättläst på alla bakgrundskartor
+      L.polyline(ln.latlngs, { color: '#fff', weight: 8, opacity: .85, interactive: false }).addTo(group);
+      L.polyline(ln.latlngs, { color, weight: 4.5, opacity: 1 })
+        .bindPopup(popupHtml(fileName, sub, id))
+        .addTo(group);
+    });
+    waypoints.forEach((wp) => {
+      L.circleMarker(wp.latlng, { radius: 7, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 })
+        .bindPopup(popupHtml(fileName, 'Punkt' + (wp.name ? ': ' + wp.name : ''), id))
+        .addTo(group);
+    });
+
+    group.addTo(map);
+    const entry = { id, name: fileName, color, group, bounds: group.getBounds(), length: total };
+    loaded.push(entry);
+    return entry;
+  }
+
+  function popupHtml(fileName, sub, id) {
+    return '<div class="pop-file">' + esc(fileName) + '</div>' +
+           (sub ? '<div class="pop-sub">' + esc(sub) + '</div>' : '') +
+           '<button type="button" class="pop-zoom" data-id="' + id + '">' + ZOOM_ICON + 'Zooma till lager</button>';
+  }
+
+  const ZOOM_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+
+  function zoomToEntry(id) {
+    const e = loaded.find((x) => x.id === id);
+    if (!e || !e.bounds.isValid()) return;
+    map.closePopup();
+    // En enskild punkt har inga utsträckta gränser, då centreras den i stället
+    if (e.bounds.getNorthEast().equals(e.bounds.getSouthWest())) map.setView(e.bounds.getCenter(), 15);
+    else map.fitBounds(e.bounds, { padding: [40, 40], maxZoom: 16 });
+  }
+
+  // Leaflet stoppar klick i popuper från att bubbla, så knappen kopplas när popupen öppnas
+  map.on('popupopen', (ev) => {
+    const btn = ev.popup.getElement().querySelector('.pop-zoom');
+    if (btn) btn.addEventListener('click', () => zoomToEntry(Number(btn.dataset.id)));
+  });
+
+  async function handleFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const added = [];
+    const failed = [];
+    for (const f of files) {
+      try {
+        const text = await f.text();
+        added.push(addGpx(f.name, text));
+      } catch (err) {
+        failed.push(f.name + ' (' + (err.message || 'kunde inte läsas') + ')');
+      }
+    }
+    renderList();
+    if (added.length) {
+      const b = L.latLngBounds([]);
+      added.forEach((e) => b.extend(e.bounds));
+      if (b.isValid()) map.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
+    }
+    if (failed.length) toast('Kunde inte läsa ' + failed.join(', '));
+    else if (added.length) toast(added.length === 1 ? 'La till ' + added[0].name : 'La till ' + added.length + ' filer');
+  }
+
+  function removeEntry(id) {
+    const i = loaded.findIndex((e) => e.id === id);
+    if (i < 0) return;
+    map.removeLayer(loaded[i].group);
+    loaded.splice(i, 1);
+    renderList();
+  }
+
+  /* ---------- Fillistan ---------- */
+  const sheet = $('sheet');
+  const listEl = $('fileList');
+  function renderList() {
+    listEl.innerHTML = '';
+    loaded.forEach((e) => {
+      const li = document.createElement('li');
+      li.className = 'file-row';
+      li.innerHTML =
+        '<button type="button" class="zoom" title="Zooma till ' + esc(e.name) + '">' +
+          '<span class="swatch" style="background:' + e.color + '"></span>' +
+          '<span class="name">' + esc(e.name) + '</span>' +
+          (e.length ? '<span class="meta">' + fmtDist(e.length) + '</span>' : '') +
+        '</button>' +
+        '<button type="button" class="zoomto" aria-label="Zooma till ' + esc(e.name) + '" title="Zooma till lager">' + ZOOM_ICON + '</button>' +
+        '<button type="button" class="remove" aria-label="Ta bort ' + esc(e.name) + '">&times;</button>';
+      li.querySelector('.zoom').addEventListener('click', () => zoomToEntry(e.id));
+      li.querySelector('.zoomto').addEventListener('click', () => zoomToEntry(e.id));
+      li.querySelector('.remove').addEventListener('click', () => removeEntry(e.id));
+      listEl.appendChild(li);
+    });
+    sheet.classList.toggle('has-files', loaded.length > 0);
+    $('sheetTitle').textContent = loaded.length === 1 ? '1 fil' : loaded.length + ' filer';
+    $('hint').hidden = loaded.length > 0;
+  }
+
+  $('toggleList').addEventListener('click', (ev) => {
+    const collapsed = sheet.classList.toggle('collapsed');
+    ev.currentTarget.textContent = collapsed ? 'Visa' : 'Dölj';
+    ev.currentTarget.setAttribute('aria-expanded', String(!collapsed));
+  });
+  $('clearAll').addEventListener('click', () => {
+    loaded.forEach((e) => map.removeLayer(e.group));
+    loaded.length = 0;
+    renderList();
+  });
+
+  const fileInput = $('fileInput');
+  $('addBtn').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    handleFiles(fileInput.files).finally(() => { fileInput.value = ''; });
+  });
+
+  // Dra och släpp (dator)
+  let dragDepth = 0;
+  window.addEventListener('dragenter', (e) => { e.preventDefault(); dragDepth++; document.body.classList.add('dragging'); });
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+  window.addEventListener('drop', (e) => {
+    e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  /* ---------- Min position ---------- */
+  const locateBtn = $('locateBtn');
+  let watching = false;
+  let firstFix = true;
+  let meMarker = null;
+  let meCircle = null;
+
+  function stopLocate() {
+    map.stopLocate();
+    watching = false;
+    locateBtn.setAttribute('aria-pressed', 'false');
+    locateBtn.classList.remove('locating');
+    if (meMarker) { map.removeLayer(meMarker); meMarker = null; }
+    if (meCircle) { map.removeLayer(meCircle); meCircle = null; }
+  }
+
+  locateBtn.addEventListener('click', () => {
+    if (watching) {
+      // Andra trycket centrerar på positionen, tredje stänger av
+      if (meMarker && !map.getBounds().contains(meMarker.getLatLng())) {
+        map.setView(meMarker.getLatLng(), Math.max(map.getZoom(), 15));
+        return;
+      }
+      stopLocate();
+      return;
+    }
+    if (!('geolocation' in navigator)) { toast('Webbläsaren kan inte visa din position.'); return; }
+    watching = true;
+    firstFix = true;
+    locateBtn.setAttribute('aria-pressed', 'true');
+    locateBtn.classList.add('locating');
+    map.locate({ watch: true, enableHighAccuracy: true, setView: false, maximumAge: 5000, timeout: 20000 });
+  });
+
+  map.on('locationfound', (e) => {
+    locateBtn.classList.remove('locating');
+    const acc = Math.round(e.accuracy);
+    if (!meMarker) {
+      meCircle = L.circle(e.latlng, {
+        radius: e.accuracy, color: '#1f6fd1', weight: 1, fillColor: '#1f6fd1', fillOpacity: .12, interactive: false
+      }).addTo(map);
+      meMarker = L.marker(e.latlng, {
+        icon: L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+        zIndexOffset: 1000, keyboard: false
+      }).addTo(map);
+    } else {
+      meMarker.setLatLng(e.latlng);
+      meCircle.setLatLng(e.latlng).setRadius(e.accuracy);
+    }
+    meMarker.bindPopup('<div class="pop-file">Din position</div><div class="pop-sub">Noggrannhet ±' + acc + ' m</div>');
+    if (firstFix) {
+      firstFix = false;
+      map.setView(e.latlng, Math.max(map.getZoom(), 15));
+    }
+  });
+
+  map.on('locationerror', (e) => {
+    const msgs = {
+      1: 'Positionen är blockerad. Tillåt platsåtkomst för sidan i webbläsarens inställningar.',
+      2: 'Positionen kunde inte bestämmas. Kontrollera att platstjänster är påslagna.',
+      3: 'Det tog för lång tid att hitta din position. Försök igen.'
+    };
+    toast(msgs[e.code] || 'Positionen kunde inte hämtas.');
+    stopLocate();
+  });
+
+  renderList();
+})();
+</script>
+</body>
+</html>
