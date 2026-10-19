@@ -119,12 +119,36 @@
   .sheet.collapsed .file-list { display: none; }
   .sheet.collapsed .sheet-head { border-bottom: none; }
   .file-list { list-style: none; margin: 0; padding: 4px 0; overflow-y: auto; }
-  .file-row { display: flex; align-items: center; }
+  .file-row { display: flex; align-items: center; flex-wrap: wrap; }
   .file-row .zoom {
     flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
     border: none; background: none; color: inherit; text-align: left;
-    padding: 10px 6px 10px 14px; font: 15px var(--font); cursor: pointer;
+    padding: 10px 6px 10px 4px; font: 15px var(--font); cursor: pointer;
   }
+  .style-btn {
+    flex: none; width: 40px; height: 44px; margin-left: 6px; border: none; background: none;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px;
+  }
+  .style-btn .swatch { width: 20px; border-radius: 3px; }
+  .style-btn[aria-expanded="true"] { background: var(--paper-2); }
+  .style-btn:focus-visible, .chip:focus-visible, .chip.custom:focus-within, .thick input:focus-visible {
+    outline: 3px solid var(--me); outline-offset: 2px;
+  }
+  .style-editor { flex-basis: 100%; padding: 4px 14px 12px; border-bottom: 1px solid var(--line); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    width: 32px; height: 32px; padding: 0; border-radius: 50%; cursor: pointer;
+    border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--line);
+  }
+  .chip[aria-pressed="true"], .chip.custom.selected { box-shadow: 0 0 0 3px var(--ink); }
+  .chip.custom {
+    position: relative; overflow: hidden; display: inline-block;
+    background: conic-gradient(#e53935, #fdd835, #43a047, #00acc1, #1e88e5, #8e24aa, #e53935);
+  }
+  .chip.custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; cursor: pointer; }
+  .thick { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--ink-soft); }
+  .thick input { flex: 1; accent-color: var(--forest); }
+  .thick output { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
   .file-row .swatch { flex: none; width: 14px; height: 4px; border-radius: 2px; }
   .file-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-row .meta { color: var(--ink-soft); font-size: 13px; white-space: nowrap; margin-left: auto; }
@@ -670,7 +694,16 @@
                 document.querySelector(sel + ':not(:disabled)');
     if (btn) btn.focus();
   }
+  const GPX_STYLE_KEY = 'am-i-in-gpx:gpx-style';
+  function saveStyles() {
+    try {
+      const out = {};
+      loaded.forEach((e) => { if (e.dbKey != null) out[e.dbKey] = { color: e.color, weight: e.weight }; });
+      localStorage.setItem(GPX_STYLE_KEY, JSON.stringify(out));
+    } catch (_) {}
+  }
   function saveGpxOrder() {
+    saveStyles(); // ordning och stil sparas vid samma tillfällen
     try { localStorage.setItem(GPX_ORDER_KEY, JSON.stringify(loaded.map((e) => e.dbKey).filter((k) => k != null))); } catch (_) {}
   }
   function moveGpx(id, dir) {
@@ -685,13 +718,37 @@
   const loaded = []; // { id, name, color, group, bounds, length }
   let nextId = 1;
 
-  function addGpx(fileName, text) {
+  const DEFAULT_WEIGHT = 4.5;
+  function validStyle(st) {
+    if (!st) return {};
+    return {
+      color: /^#[0-9a-f]{6}$/i.test(st.color) ? st.color : null,
+      weight: Number.isFinite(st.weight) && st.weight >= 2 && st.weight <= 12 ? st.weight : null
+    };
+  }
+  function applyStyle(e) {
+    e.lines.forEach(({ casing, line }) => {
+      casing.setStyle({ weight: e.weight + 3.5 });
+      line.setStyle({ color: e.color, weight: e.weight });
+    });
+    e.points.forEach((pt) => {
+      pt.setStyle({ fillColor: e.color });
+      pt.setRadius(Math.max(5, e.weight + 2.5));
+    });
+  }
+
+  function addGpx(fileName, text, savedStyle) {
     const { lines, waypoints } = parseGpx(text);
     if (!lines.length && !waypoints.length) throw new Error('filen innehåller inga spår, rutter eller punkter');
 
     const id = nextId++;
-    const color = palette[colorIndex++ % palette.length];
+    const st = validStyle(savedStyle);
+    const autoColor = palette[colorIndex++ % palette.length];
+    const color = st.color || autoColor;
+    const weight = st.weight || DEFAULT_WEIGHT;
     const group = L.featureGroup();
+    const lineRefs = [];
+    const pointRefs = [];
     let total = 0;
 
     lines.forEach((ln) => {
@@ -699,19 +756,21 @@
       total += len;
       const sub = [ln.kind + (ln.name ? ': ' + ln.name : ''), fmtDist(len)].join(', ');
       // Vit kontur under linjen gör den lättläst på alla bakgrundskartor
-      L.polyline(ln.latlngs, { color: '#fff', weight: 8, opacity: .85, interactive: false }).addTo(group);
-      L.polyline(ln.latlngs, { color, weight: 4.5, opacity: 1 })
+      const casing = L.polyline(ln.latlngs, { color: '#fff', weight: weight + 3.5, opacity: .85, interactive: false }).addTo(group);
+      const line = L.polyline(ln.latlngs, { color, weight, opacity: 1 })
         .bindPopup(popupHtml(fileName, sub))
         .addTo(group);
+      lineRefs.push({ casing, line });
     });
     waypoints.forEach((wp) => {
-      L.circleMarker(wp.latlng, { radius: 7, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 })
+      const pt = L.circleMarker(wp.latlng, { radius: Math.max(5, weight + 2.5), color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 })
         .bindPopup(popupHtml(fileName, 'Punkt' + (wp.name ? ': ' + wp.name : '')))
         .addTo(group);
+      pointRefs.push(pt);
     });
 
     group.addTo(map);
-    const entry = { id, name: fileName, color, group, bounds: group.getBounds(), length: total };
+    const entry = { id, name: fileName, color, weight, lines: lineRefs, points: pointRefs, group, bounds: group.getBounds(), length: total };
     loaded.push(entry);
     return entry;
   }
@@ -769,20 +828,76 @@
   /* ---------- Fillistan ---------- */
   const sheet = $('sheet');
   const listEl = $('fileList');
+  const COLOR_NAMES = ['Magenta', 'Orange', 'Blå', 'Grön', 'Lila', 'Ockra', 'Turkos', 'Rosa'];
+  let styleOpenId = null;
+  const swatchHeight = (w) => Math.max(3, Math.min(9, Math.round(w * 0.8)));
+  const fmtWeight = (w) => w.toLocaleString('sv-SE') + ' px';
+
+  function styleEditorHtml(e) {
+    const inPalette = palette.includes(e.color.toLowerCase());
+    return '<div class="style-editor">' +
+      '<div class="chips" role="group" aria-label="Färg">' +
+        palette.map((c, i) => '<button type="button" class="chip" data-color="' + c + '" style="background:' + c + '"' +
+          ' aria-label="' + COLOR_NAMES[i] + '" aria-pressed="' + (c === e.color.toLowerCase()) + '"></button>').join('') +
+        '<label class="chip custom' + (inPalette ? '' : ' selected') + '" title="Egen färg">' +
+          '<input type="color" value="' + e.color + '" aria-label="Egen färg"></label>' +
+      '</div>' +
+      '<label class="thick">Tjocklek' +
+        '<input type="range" min="2" max="12" step="0.5" value="' + e.weight + '">' +
+        '<output>' + fmtWeight(e.weight) + '</output></label>' +
+    '</div>';
+  }
+
+  function wireStyleEditor(li, e) {
+    const swatch = li.querySelector('.style-btn .swatch');
+    const custom = li.querySelector('.chip.custom');
+    const preview = (c) => { e.color = c; applyStyle(e); swatch.style.background = c; };
+    const commitColor = (c) => {
+      preview(c);
+      li.querySelectorAll('.chip[data-color]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.color === c)));
+      custom.classList.toggle('selected', !palette.includes(c.toLowerCase()));
+      saveStyles();
+    };
+    li.querySelectorAll('.chip[data-color]').forEach((b) => b.addEventListener('click', () => commitColor(b.dataset.color)));
+    const picker = li.querySelector('input[type="color"]');
+    picker.addEventListener('input', () => preview(picker.value));
+    picker.addEventListener('change', () => commitColor(picker.value));
+    const range = li.querySelector('input[type="range"]');
+    const out = li.querySelector('output');
+    range.addEventListener('input', () => {
+      e.weight = parseFloat(range.value);
+      applyStyle(e);
+      out.textContent = fmtWeight(e.weight);
+      swatch.style.height = swatchHeight(e.weight) + 'px';
+    });
+    range.addEventListener('change', saveStyles);
+  }
+
   function renderList() {
     listEl.innerHTML = '';
     const n = loaded.length;
     loaded.slice().reverse().forEach((e, idx) => {
       const li = document.createElement('li');
       li.className = 'file-row';
+      const open = styleOpenId === e.id;
       li.innerHTML =
+        '<button type="button" class="style-btn" data-id="' + e.id + '" aria-expanded="' + open + '"' +
+          ' aria-label="Färg och tjocklek för ' + esc(e.name) + '" title="Färg och tjocklek">' +
+          '<span class="swatch" style="background:' + e.color + ';height:' + swatchHeight(e.weight) + 'px"></span></button>' +
         '<button type="button" class="zoom" title="Zooma till ' + esc(e.name) + '">' +
-          '<span class="swatch" style="background:' + e.color + '"></span>' +
           '<span class="name">' + esc(e.name) + '</span>' +
           (e.length ? '<span class="meta">' + fmtDist(e.length) + '</span>' : '') +
         '</button>' +
         orderButtons('gpx', e.id, idx, n, e.name) +
-        '<button type="button" class="remove" aria-label="Ta bort ' + esc(e.name) + '">&times;</button>';
+        '<button type="button" class="remove" aria-label="Ta bort ' + esc(e.name) + '">&times;</button>' +
+        (open ? styleEditorHtml(e) : '');
+      li.querySelector('.style-btn').addEventListener('click', () => {
+        styleOpenId = open ? null : e.id;
+        renderList();
+        const b = listEl.querySelector('.style-btn[data-id="' + e.id + '"]');
+        if (b) b.focus();
+      });
+      if (open) wireStyleEditor(li, e);
       li.querySelector('.zoom').addEventListener('click', () => zoomToEntry(e.id));
       li.querySelectorAll('.order-btn').forEach((b) => b.addEventListener('click', () => moveGpx(e.id, +b.dataset.dir)));
       li.querySelector('.remove').addEventListener('click', () => removeEntry(e.id));
@@ -803,7 +918,7 @@
     loaded.forEach((e) => { e.removed = true; map.removeLayer(e.group); });
     loaded.length = 0;
     renderList();
-    try { localStorage.removeItem(GPX_ORDER_KEY); } catch (_) {}
+    try { localStorage.removeItem(GPX_ORDER_KEY); localStorage.removeItem(GPX_STYLE_KEY); } catch (_) {}
     return gpxStore.clear().catch(() => {});
   }
   $('clearAll').addEventListener('click', clearGpx);
@@ -1237,10 +1352,12 @@
     try { order = JSON.parse(localStorage.getItem(GPX_ORDER_KEY) || '[]') || []; } catch (_) {}
     const rank = (r) => { const i = order.indexOf(r.key); return i < 0 ? 1e9 + r.key : i; };
     recs.sort((a, b) => rank(a) - rank(b));
+    let styles = {};
+    try { styles = JSON.parse(localStorage.getItem(GPX_STYLE_KEY) || '{}') || {}; } catch (_) {}
     const b = L.latLngBounds([]);
     recs.forEach((r) => {
       try {
-        const e = addGpx(r.name, r.text);
+        const e = addGpx(r.name, r.text, styles[r.key]);
         e.dbKey = r.key;
         b.extend(e.bounds);
       } catch (_) {
