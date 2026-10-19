@@ -276,6 +276,39 @@
   .opacity-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 0 30px; font-size: 13px; color: var(--ink-soft); }
   .opacity-row input { flex: 1; accent-color: var(--forest); }
 
+  /* Mätverktyg */
+  .measure-panel {
+    position: fixed; z-index: 1000;
+    top: calc(62px + var(--safe-t));
+    left: calc(10px + var(--safe-l)); right: calc(10px + var(--safe-r));
+    max-width: 440px; margin: 0 auto;
+    padding: 10px 12px 12px;
+    background: var(--paper); color: var(--ink);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
+  .measure-panel[hidden] { display: none; }
+  .measure-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .measure-total { font: 600 26px/1.1 var(--font-title); font-variant-numeric: tabular-nums; }
+  .measure-sub { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+  .seg { display: inline-flex; flex: none; padding: 3px; gap: 2px; border-radius: 10px; background: var(--paper-2); }
+  .seg button {
+    min-width: 44px; min-height: 38px; padding: 0 10px; border: none; border-radius: 8px;
+    background: none; color: var(--ink-soft); font: 600 15px var(--font); cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--forest); color: #f2f5ef; }
+  .seg button:focus-visible, .measure-actions .btn:focus-visible { outline: 3px solid var(--me); outline-offset: 2px; }
+  .measure-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .measure-actions .btn { flex: 1; }
+  .measure-tip {
+    font: 600 13px var(--font); padding: 3px 8px; border-radius: 8px;
+    background: var(--forest); color: #f2f5ef; border: none; box-shadow: var(--shadow);
+  }
+  .measure-tip.leaflet-tooltip-top::before { border-top-color: var(--forest); }
+  body.measuring .leaflet-container, body.measuring .leaflet-grab { cursor: crosshair; }
+  body.measuring .leaflet-overlay-pane .leaflet-interactive,
+  body.measuring .leaflet-marker-pane .leaflet-interactive { pointer-events: none; }
+  body.measuring .hint { display: none; }
+
   @media (prefers-reduced-motion: reduce) {
     .fab.locating svg { animation: none; }
     .toast { transition: none; }
@@ -318,6 +351,11 @@
     <button type="button" class="fab icon" id="wmsBtn" aria-label="WMS-lager" title="WMS-lager">
       <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
         <path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/>
+      </svg>
+    </button>
+    <button type="button" class="fab icon" id="measureBtn" aria-pressed="false" aria-label="Mät avstånd" title="Mät avstånd">
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M3 17 17 3l4 4L7 21z"/><path d="m7.5 12.5 2 2M10.5 9.5l2 2M13.5 6.5l2 2"/>
       </svg>
     </button>
     <button type="button" class="fab icon" id="locateBtn" aria-pressed="false" aria-label="Visa min position" title="Visa min position">
@@ -392,6 +430,25 @@
       </div>
     </section>
   </div>
+
+  <section class="measure-panel" id="measurePanel" hidden aria-label="Mät avstånd">
+    <div class="measure-top">
+      <div>
+        <div class="measure-total" id="measureTotal" aria-live="polite">0 m</div>
+        <div class="measure-sub" id="measureSub">Tryck i kartan för att börja mäta.</div>
+      </div>
+      <div class="seg" role="group" aria-label="Enhet">
+        <button type="button" data-unit="m">m</button>
+        <button type="button" data-unit="km">km</button>
+        <button type="button" data-unit="mil">mil</button>
+      </div>
+    </div>
+    <div class="measure-actions">
+      <button type="button" class="btn" id="measureUndo">Ångra</button>
+      <button type="button" class="btn" id="measureClear">Rensa</button>
+      <button type="button" class="btn primary" id="measureDone">Klar</button>
+    </div>
+  </section>
 
   <div class="drop-overlay" aria-hidden="true">Släpp GPX-filerna här</div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1193,6 +1250,92 @@
     renderList();
     if (b.isValid()) map.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
   }
+
+  /* ---------- Mätverktyg ---------- */
+  const UNIT_KEY = 'am-i-in-gpx:unit';
+  const UNITS = ['m', 'km', 'mil']; // 1 mil = 10 km
+  let measureUnit = 'km';
+  try { const u = localStorage.getItem(UNIT_KEY); if (UNITS.includes(u)) measureUnit = u; } catch (_) {}
+  map.createPane('measurePane').style.zIndex = 450; // över GPX-spåren, under markörer och popuper
+  const measureGroup = L.layerGroup();
+  let measuring = false;
+  let mPoints = [];
+
+  function fmtMeasure(m) {
+    const nf = (v, d) => v.toLocaleString('sv-SE', { minimumFractionDigits: d, maximumFractionDigits: d });
+    if (measureUnit === 'm') return Math.round(m).toLocaleString('sv-SE') + ' m';
+    if (measureUnit === 'km') return nf(m / 1000, m < 10000 ? 2 : 1) + ' km';
+    return nf(m / 10000, 2) + ' mil';
+  }
+  function measureTotal() { return lengthOf(mPoints); }
+
+  function renderMeasure() {
+    measureGroup.clearLayers();
+    const n = mPoints.length;
+    const total = measureTotal();
+    if (n > 1) {
+      L.polyline(mPoints, { pane: 'measurePane', color: '#fff', weight: 7, opacity: 0.9, interactive: false }).addTo(measureGroup);
+      L.polyline(mPoints, { pane: 'measurePane', color: '#1c2b24', weight: 3, dashArray: '8 7', interactive: false }).addTo(measureGroup);
+    }
+    mPoints.forEach((p, i) => {
+      const dot = L.circleMarker(p, {
+        pane: 'measurePane', radius: 6, color: '#fff', weight: 2, fillColor: '#1c2b24', fillOpacity: 1, interactive: false
+      }).addTo(measureGroup);
+      if (i === n - 1 && n > 1) {
+        dot.bindTooltip(fmtMeasure(total), { permanent: true, direction: 'top', offset: [0, -8], className: 'measure-tip' }).openTooltip();
+      }
+    });
+
+    $('measureTotal').textContent = fmtMeasure(total);
+    let sub;
+    if (n === 0) sub = 'Tryck i kartan för att börja mäta.';
+    else if (n === 1) sub = 'Tryck på nästa punkt.';
+    else sub = n + ' punkter · senaste sträckan ' + fmtMeasure(mPoints[n - 2].distanceTo(mPoints[n - 1]));
+    $('measureSub').textContent = sub;
+    $('measureUndo').disabled = n === 0;
+    $('measureClear').disabled = n === 0;
+    document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.unit === measureUnit)));
+  }
+
+  function startMeasure() {
+    measuring = true;
+    mPoints = [];
+    document.body.classList.add('measuring');
+    map.closePopup();
+    map.doubleClickZoom.disable(); // snabba tryck ska sätta punkter, inte zooma
+    measureGroup.addTo(map);
+    $('measureBtn').setAttribute('aria-pressed', 'true');
+    $('measurePanel').hidden = false;
+    renderMeasure();
+  }
+  function stopMeasure() {
+    measuring = false;
+    mPoints = [];
+    document.body.classList.remove('measuring');
+    map.doubleClickZoom.enable();
+    measureGroup.clearLayers();
+    measureGroup.remove();
+    $('measureBtn').setAttribute('aria-pressed', 'false');
+    $('measurePanel').hidden = true;
+  }
+
+  map.on('click', (e) => {
+    if (!measuring) return;
+    mPoints.push(e.latlng);
+    renderMeasure();
+  });
+  $('measureBtn').addEventListener('click', () => (measuring ? stopMeasure() : startMeasure()));
+  $('measureUndo').addEventListener('click', () => { mPoints.pop(); renderMeasure(); });
+  $('measureClear').addEventListener('click', () => { mPoints = []; renderMeasure(); });
+  $('measureDone').addEventListener('click', stopMeasure);
+  document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+    measureUnit = b.dataset.unit;
+    try { localStorage.setItem(UNIT_KEY, measureUnit); } catch (_) {}
+    renderMeasure();
+  }));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && measuring && wmsModal.hidden && cacheModal.hidden) stopMeasure();
+  });
 
   loadWms();
   restoreGpx();
