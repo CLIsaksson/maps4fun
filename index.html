@@ -128,13 +128,8 @@
   .file-row .swatch { flex: none; width: 14px; height: 4px; border-radius: 2px; }
   .file-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-row .meta { color: var(--ink-soft); font-size: 13px; white-space: nowrap; margin-left: auto; }
-  .file-row .remove:focus-visible, .pop-zoom:focus-visible {
+  .file-row .remove:focus-visible {
     outline: 3px solid var(--me); outline-offset: 2px;
-  }
-  .pop-zoom {
-    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
-    padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
-    background: var(--paper-2); color: var(--ink); font: 600 14px var(--font); cursor: pointer;
   }
   .order-btn {
     flex: none; width: 34px; height: 44px; border: none; background: none;
@@ -278,7 +273,6 @@
   .added-top { display: flex; align-items: center; gap: 10px; }
   .added-top input[type="checkbox"] { width: 20px; height: 20px; flex: none; accent-color: var(--forest); }
   .added-top .grow { flex: 1; min-width: 0; }
-  .use-btn { min-height: 36px; padding: 0 12px; font-size: 14px; }
   .opacity-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 0 30px; font-size: 13px; color: var(--ink-soft); }
   .opacity-row input { flex: 1; accent-color: var(--forest); }
 
@@ -321,7 +315,7 @@
   </section>
 
   <div class="fab-stack">
-    <button type="button" class="fab icon" id="wmsBtn" aria-label="Lägg till lager" title="Lägg till lager">
+    <button type="button" class="fab icon" id="wmsBtn" aria-label="WMS-lager" title="WMS-lager">
       <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
         <path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/>
       </svg>
@@ -345,14 +339,13 @@
     <div class="modal-backdrop" data-close></div>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="wmsTitle">
       <header class="modal-head">
-        <h2 id="wmsTitle">Lägg till lager</h2>
+        <h2 id="wmsTitle">WMS-lager</h2>
         <button type="button" class="icon-btn" data-close aria-label="Stäng">&times;</button>
       </header>
       <div class="modal-body">
-        <label for="wmsUrl" class="lbl">Adress till WMS- eller WMTS-tjänst</label>
+        <label for="wmsUrl" class="lbl">Adress till WMS-tjänst</label>
         <input id="wmsUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
-               placeholder="https://…?SERVICE=WMS&amp;REQUEST=GetCapabilities">
-        <p class="layer-meta" style="margin:6px 0 0">WMS läggs till som lager ovanpå kartan. WMTS läggs till som en extra bakgrundskarta.</p>
+               placeholder="https://…/WMSServer?SERVICE=WMS&amp;REQUEST=GetCapabilities">
         <div class="row">
           <button type="button" class="btn primary" id="wmsFetch">Hämta lager</button>
         </div>
@@ -376,25 +369,10 @@
           <div class="row"><button type="button" class="btn" id="wmsManualAdd">Lägg till</button></div>
         </details>
 
-        <details id="xyzManual">
-          <summary>Ange kakeladress för bakgrundskarta manuellt</summary>
-          <label for="xyzUrl" class="lbl" style="margin-top:8px">Kakeladress med {z}, {x} och {y}</label>
-          <input id="xyzUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
-                 placeholder="https://…/{z}/{y}/{x}.png">
-          <label for="xyzName" class="lbl" style="margin-top:10px">Namn</label>
-          <input id="xyzName" type="text" autocomplete="off">
-          <div class="row"><button type="button" class="btn" id="xyzAdd">Lägg till som bakgrundskarta</button></div>
-        </details>
-
         <div id="wmsAddedWrap" hidden>
-          <h3>Tillagda WMS-lager</h3>
+          <h3>Tillagda lager</h3>
           <p class="layer-meta" style="margin:0 0 6px">Översta lagret ritas överst i kartan.</p>
           <ul class="added-list" id="wmsAddedList"></ul>
-        </div>
-
-        <div id="wmtsAddedWrap" hidden>
-          <h3>Tillagda bakgrundskartor</h3>
-          <ul class="added-list" id="wmtsAddedList"></ul>
         </div>
       </div>
     </section>
@@ -488,7 +466,7 @@
   const map = L.map('map', {
     center: [62.5, 16.5], // Sverige
     zoom: 5,
-    layers: [], // bakgrundskartan väljs i restoreBase() när sparade kartor lästs in
+    layers: [baseLayers['Positron (OpenMapTiles)']],
     zoomControl: true
   });
   map.zoomControl.setPosition('topright');
@@ -666,12 +644,12 @@
       // Vit kontur under linjen gör den lättläst på alla bakgrundskartor
       L.polyline(ln.latlngs, { color: '#fff', weight: 8, opacity: .85, interactive: false }).addTo(group);
       L.polyline(ln.latlngs, { color, weight: 4.5, opacity: 1 })
-        .bindPopup(popupHtml(fileName, sub, id))
+        .bindPopup(popupHtml(fileName, sub))
         .addTo(group);
     });
     waypoints.forEach((wp) => {
       L.circleMarker(wp.latlng, { radius: 7, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 })
-        .bindPopup(popupHtml(fileName, 'Punkt' + (wp.name ? ': ' + wp.name : ''), id))
+        .bindPopup(popupHtml(fileName, 'Punkt' + (wp.name ? ': ' + wp.name : '')))
         .addTo(group);
     });
 
@@ -681,28 +659,18 @@
     return entry;
   }
 
-  function popupHtml(fileName, sub, id) {
+  function popupHtml(fileName, sub) {
     return '<div class="pop-file">' + esc(fileName) + '</div>' +
-           (sub ? '<div class="pop-sub">' + esc(sub) + '</div>' : '') +
-           '<button type="button" class="pop-zoom" data-id="' + id + '">' + ZOOM_ICON + 'Zooma till lager</button>';
+           (sub ? '<div class="pop-sub">' + esc(sub) + '</div>' : '');
   }
-
-  const ZOOM_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
 
   function zoomToEntry(id) {
     const e = loaded.find((x) => x.id === id);
     if (!e || !e.bounds.isValid()) return;
-    map.closePopup();
     // En enskild punkt har inga utsträckta gränser, då centreras den i stället
     if (e.bounds.getNorthEast().equals(e.bounds.getSouthWest())) map.setView(e.bounds.getCenter(), 15);
     else map.fitBounds(e.bounds, { padding: [40, 40], maxZoom: 16 });
   }
-
-  // Leaflet stoppar klick i popuper från att bubbla, så knappen kopplas när popupen öppnas
-  map.on('popupopen', (ev) => {
-    const btn = ev.popup.getElement().querySelector('.pop-zoom');
-    if (btn) btn.addEventListener('click', () => zoomToEntry(Number(btn.dataset.id)));
-  });
 
   async function handleFiles(fileList) {
     const files = Array.from(fileList || []);
@@ -957,296 +925,45 @@
     return { version, format, layers };
   }
 
-  function looksLikeWmts(url) { return /wmts/i.test(url); }
-
   async function fetchCaps() {
-    const raw = wmsUrl.value.trim();
-    let userUrl;
-    try { userUrl = new URL(raw); } catch (_) {
+    let base;
+    try { base = wmsBase(wmsUrl.value); } catch (_) {
       setStatus('Det där ser inte ut som en giltig webbadress.', true);
       return;
     }
-    const isWmts = looksLikeWmts(raw);
-    // Använd adressen som den är om den redan är en GetCapabilities-adress
-    let capUrl;
-    if (/request=getcapabilities/i.test(raw) || /capabilities\.xml$/i.test(userUrl.pathname)) {
-      capUrl = userUrl.toString();
-    } else {
-      const u = new URL(isWmts ? raw : wmsBase(raw));
-      u.searchParams.set('SERVICE', isWmts ? 'WMTS' : 'WMS');
-      u.searchParams.set('REQUEST', 'GetCapabilities');
-      if (isWmts) u.searchParams.set('VERSION', '1.0.0');
-      capUrl = u.toString();
-    }
+    const capUrl = new URL(base);
+    capUrl.searchParams.set('SERVICE', 'WMS');
+    capUrl.searchParams.set('REQUEST', 'GetCapabilities');
 
     const btn = $('wmsFetch');
     btn.disabled = true;
     wmsPick.hidden = true;
     setStatus('Hämtar lagerlistan …');
     try {
-      const res = await fetch(capUrl);
-      if (res.status === 401 || res.status === 403) {
-        throw new Error('tjänsten kräver inloggning eller en API-nyckel (svar ' + res.status + '). Använd adressen med din nyckel.');
-      }
+      const res = await fetch(capUrl.toString());
       if (!res.ok) throw new Error('servern svarade ' + res.status);
-      const text = await res.text();
-      const xml = new DOMParser().parseFromString(text, 'application/xml');
-      const root = xml.documentElement;
-      if (root && root.localName === 'Capabilities' && !xml.getElementsByTagName('parsererror').length) {
-        wmsCaps = Object.assign({ type: 'wmts' }, parseWmts(xml, raw));
-      } else {
-        wmsCaps = Object.assign({ type: 'wms', base: wmsBase(raw) }, parseCaps(text));
-      }
+      const caps = parseCaps(await res.text());
+      wmsCaps = Object.assign({ base }, caps);
       renderPick();
-      const n = wmsCaps.layers.length;
-      setStatus((n === 1 ? 'Hittade 1 lager' : 'Hittade ' + n + ' lager') + (wmsCaps.type === 'wmts' ? ' (WMTS).' : ' (WMS).'));
+      setStatus(caps.layers.length === 1 ? 'Hittade 1 lager.' : 'Hittade ' + caps.layers.length + ' lager.');
     } catch (err) {
       wmsCaps = null;
       const corsLike = err instanceof TypeError;
       setStatus(corsLike
-        ? 'Kunde inte läsa lagerlistan. Servern tillåter troligen inte att den hämtas direkt från webbläsaren. Ange lagret manuellt nedan.'
+        ? 'Kunde inte läsa lagerlistan. Servern tillåter troligen inte att den hämtas direkt från webbläsaren. Ange lagernamnet manuellt nedan.'
         : 'Kunde inte läsa lagerlistan: ' + err.message, true);
-      if (corsLike) $(isWmts ? 'xyzManual' : 'wmsManual').open = true;
+      $('wmsManual').open = true;
     } finally {
       btn.disabled = false;
     }
   }
 
-  /* ---------- WMTS ---------- */
-  const MERC_RE = /EPSG(?::|::)(?:3857|900913|102100|102113)\b|GoogleMapsCompatible/i;
-  const RES_Z0 = 156543.03392804097; // meter per pixel vid zoom 0
-
-  function parseWmts(xml, userUrl) {
-    const contents = byTag(xml, 'Contents')[0];
-    if (!contents) throw new Error('WMTS-svaret saknar lager');
-    const kids = (el, name) => Array.from(el.children).filter((c) => c.localName === name);
-
-    // Endast tile matrix sets i webbmercator kan visas i kartan
-    const sets = {};
-    kids(contents, 'TileMatrixSet').forEach((tms) => {
-      const id = childText(tms, 'Identifier');
-      const merc = MERC_RE.test(childText(tms, 'SupportedCRS')) || MERC_RE.test(childText(tms, 'WellKnownScaleSet'));
-      if (!id || !merc) return;
-      const matrixIds = {};
-      let tile = 256;
-      kids(tms, 'TileMatrix').forEach((m) => {
-        const scale = parseFloat(childText(m, 'ScaleDenominator'));
-        if (!scale) return;
-        const z = Math.round(Math.log2(RES_Z0 / (scale * 0.00028)));
-        if (z >= 0 && z <= 24) matrixIds[z] = childText(m, 'Identifier');
-        tile = parseInt(childText(m, 'TileWidth'), 10) || tile;
-      });
-      const zs = Object.keys(matrixIds).map(Number);
-      if (zs.length) sets[id] = { id, matrixIds, tile, minZoom: Math.min(...zs), maxZoom: Math.max(...zs) };
-    });
-    if (!Object.keys(sets).length) {
-      throw new Error('tjänsten saknar kakel i webbmercator (EPSG:3857), som kartan behöver');
-    }
-
-    const si = byTag(xml, 'ServiceIdentification')[0];
-    const svcTitle = si ? childText(si, 'Title') : '';
-    let host = '';
-    try { host = new URL(userUrl).hostname; } catch (_) {}
-
-    let kvpHref = '';
-    byTag(xml, 'Operation').forEach((op) => {
-      if (op.getAttribute('name') !== 'GetTile' || kvpHref) return;
-      const g = byTag(op, 'Get')[0];
-      if (g) kvpHref = g.getAttribute('xlink:href') || g.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || '';
-    });
-
-    // Parametrar i användarens adress (t.ex. apikey) följer med till kakeladresserna
-    const extra = [];
-    new URL(userUrl).searchParams.forEach((v, k) => {
-      if (!['service', 'request', 'version', 'acceptversions'].includes(k.toLowerCase())) extra.push([k, v]);
-    });
-    const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const withExtra = (u) => {
-      const missing = extra.filter(([k]) => !new RegExp('[?&]' + reEsc(k) + '=', 'i').test(u));
-      if (!missing.length) return u;
-      return u + (u.includes('?') ? '&' : '?') + missing.map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
-    };
-    const upgrade = (u) => (location.protocol === 'https:' && /^http:\/\//i.test(u)) ? 'https://' + u.slice(7) : u;
-    const pickFmt = (list) => list.find((f) => /png/i.test(f)) || list.find((f) => /jpe?g/i.test(f)) || list[0];
-
-    const layers = kids(contents, 'Layer').map((el) => {
-      const id = childText(el, 'Identifier');
-      if (!id) return null;
-      const set = kids(el, 'TileMatrixSetLink').map((l) => sets[childText(l, 'TileMatrixSet')]).find(Boolean);
-      if (!set) return null;
-      const styles = kids(el, 'Style');
-      const styleEl = styles.find((x) => x.getAttribute('isDefault') === 'true') || styles[0];
-      const style = styleEl ? childText(styleEl, 'Identifier') : 'default';
-      const resources = kids(el, 'ResourceURL').filter((r) => (r.getAttribute('resourceType') || 'tile') === 'tile');
-
-      let template;
-      if (resources.length) {
-        const fmt = pickFmt(resources.map((r) => r.getAttribute('format') || ''));
-        template = (resources.find((r) => r.getAttribute('format') === fmt) || resources[0]).getAttribute('template');
-        template = template
-          .replace(/\{TileMatrixSet\}/gi, encodeURIComponent(set.id))
-          .replace(/\{Style\}/gi, encodeURIComponent(style))
-          .replace(/\{TileMatrix\}/gi, '{TileMatrix}')
-          .replace(/\{TileRow\}/gi, '{TileRow}')
-          .replace(/\{TileCol\}/gi, '{TileCol}');
-      } else if (kvpHref) {
-        const fmt = pickFmt(kids(el, 'Format').map((f) => f.textContent.trim())) || 'image/png';
-        const sep = kvpHref.includes('?') ? (/[?&]$/.test(kvpHref) ? '' : '&') : '?';
-        template = kvpHref + sep + 'SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
-          '&LAYER=' + encodeURIComponent(id) + '&STYLE=' + encodeURIComponent(style) +
-          '&TILEMATRIXSET=' + encodeURIComponent(set.id) + '&FORMAT=' + encodeURIComponent(fmt) +
-          '&TILEMATRIX={TileMatrix}&TILEROW={TileRow}&TILECOL={TileCol}';
-      } else {
-        return null;
-      }
-      return {
-        kind: 'wmts', name: id, title: childText(el, 'Title') || id,
-        template: withExtra(upgrade(template)),
-        matrixIds: set.matrixIds, tileSize: set.tile, minZoom: set.minZoom, maxZoom: set.maxZoom,
-        attribution: (svcTitle || id) + (host ? ' (' + host + ')' : '')
-      };
-    }).filter(Boolean);
-
-    if (!layers.length) throw new Error('inga av tjänstens lager kan visas i kartan');
-    return { layers };
-  }
-
-  const WmtsTileLayer = L.TileLayer.extend({
-    getTileUrl(coords) {
-      const id = this.options.matrixIds[coords.z];
-      if (id == null) return L.Util.emptyImageUrl;
-      return this._url
-        .replace('{TileMatrix}', encodeURIComponent(id))
-        .replace('{TileRow}', coords.y)
-        .replace('{TileCol}', coords.x);
-    }
-  });
-
-  function makeBaseLayer(cfg) {
-    const attribution = esc(cfg.attribution || cfg.title);
-    if (cfg.kind === 'xyz') {
-      return L.tileLayer(cfg.template, { maxZoom: 20, maxNativeZoom: 19, attribution });
-    }
-    return new WmtsTileLayer(cfg.template, {
-      tileSize: cfg.tileSize || 256, maxZoom: 20,
-      minNativeZoom: cfg.minZoom, maxNativeZoom: cfg.maxZoom,
-      matrixIds: cfg.matrixIds, attribution
-    });
-  }
-
-  const WMTS_KEY = 'am-i-in-gpx:wmts';
-  const BASE_KEY = 'am-i-in-gpx:base';
-  const DEFAULT_BASE = 'Positron (OpenMapTiles)';
-  const wmtsAdded = []; // { cfg, layer }
-
-  function allBases() {
-    return Object.keys(baseLayers).map((n) => ({ key: 'builtin:' + n, layer: baseLayers[n] }))
-      .concat(wmtsAdded.map((e) => ({ key: 'wmts:' + e.cfg.uid, layer: e.layer })));
-  }
-  function saveBase() {
-    const b = allBases().find((x) => map.hasLayer(x.layer));
-    if (b) { try { localStorage.setItem(BASE_KEY, b.key); } catch (_) {} }
-    renderWmtsAdded();
-  }
-  function setBase(layer) {
-    allBases().forEach((b) => { if (b.layer !== layer && map.hasLayer(b.layer)) map.removeLayer(b.layer); });
-    if (!map.hasLayer(layer)) layer.addTo(map);
-    saveBase();
-  }
-  map.on('baselayerchange', saveBase);
-
-  function saveWmts() {
-    try { localStorage.setItem(WMTS_KEY, JSON.stringify(wmtsAdded.map((e) => e.cfg))); } catch (_) {}
-  }
-  function addWmtsBase(cfg) {
-    cfg.uid = cfg.uid || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
-    const layer = makeBaseLayer(cfg);
-    let warned = false;
-    layer.on('tileerror', () => {
-      if (!warned) { warned = true; toast('Bakgrundskartan ”' + cfg.title + '” gav fel. Kontrollera adressen eller API-nyckeln.'); }
-    });
-    const entry = { cfg, layer };
-    wmtsAdded.push(entry);
-    layerControl.addBaseLayer(layer, esc(cfg.title));
-    return entry;
-  }
-  function removeWmtsBase(uid) {
-    const i = wmtsAdded.findIndex((e) => e.cfg.uid === uid);
-    if (i < 0) return;
-    const e = wmtsAdded[i];
-    const wasActive = map.hasLayer(e.layer);
-    layerControl.removeLayer(e.layer);
-    map.removeLayer(e.layer);
-    wmtsAdded.splice(i, 1);
-    saveWmts();
-    if (wasActive) setBase(baseLayers[DEFAULT_BASE]);
-    renderWmtsAdded();
-  }
-  function renderWmtsAdded() {
-    const list = $('wmtsAddedList');
-    if (!list) return;
-    list.innerHTML = '';
-    wmtsAdded.forEach((e) => {
-      const active = map.hasLayer(e.layer);
-      const range = e.cfg.kind === 'wmts' ? 'zoomnivå ' + e.cfg.minZoom + '–' + e.cfg.maxZoom : 'kakeladress';
-      const li = document.createElement('li');
-      li.innerHTML =
-        '<div class="added-top">' +
-          '<div class="grow"><span class="layer-title">' + esc(e.cfg.title) + '</span>' +
-          '<span class="layer-meta">' + esc(range) + (active ? ' · visas nu' : '') + '</span></div>' +
-          (active ? '' : '<button type="button" class="btn use-btn">Använd</button>') +
-          '<button type="button" class="icon-btn" aria-label="Ta bort ' + esc(e.cfg.title) + '">&times;</button>' +
-        '</div>';
-      const use = li.querySelector('.use-btn');
-      if (use) use.addEventListener('click', () => setBase(e.layer));
-      li.querySelector('.icon-btn').addEventListener('click', () => removeWmtsBase(e.cfg.uid));
-      list.appendChild(li);
-    });
-    $('wmtsAddedWrap').hidden = wmtsAdded.length === 0;
-  }
-  function loadWmts() {
-    try {
-      const arr = JSON.parse(localStorage.getItem(WMTS_KEY) || '[]');
-      if (Array.isArray(arr)) arr.forEach((c) => { if (c && c.template) addWmtsBase(c); });
-    } catch (_) {}
-  }
-  function restoreBase() {
-    let key = null;
-    try { key = localStorage.getItem(BASE_KEY); } catch (_) {}
-    const found = key && allBases().find((b) => b.key === key);
-    setBase(found ? found.layer : baseLayers[DEFAULT_BASE]);
-  }
-  function addBasesAndUse(cfgs) {
-    const entries = cfgs.map(addWmtsBase);
-    saveWmts();
-    setBase(entries[entries.length - 1].layer);
-    toast(entries.length === 1
-      ? 'La till ' + entries[0].cfg.title + ' som bakgrundskarta'
-      : 'La till ' + entries.length + ' bakgrundskartor');
-    closeWms();
-  }
-
-  $('xyzAdd').addEventListener('click', () => {
-    const url = $('xyzUrl').value.trim();
-    if (!/^https?:\/\//i.test(url) || !/\{z\}/.test(url) || !/\{x\}/.test(url) || !/\{y\}/.test(url)) {
-      setStatus('Kakeladressen måste börja med https:// och innehålla {z}, {x} och {y}.', true);
-      return;
-    }
-    let host = '';
-    try { host = new URL(url.replace(/[{}]/g, '')).hostname; } catch (_) {}
-    const title = $('xyzName').value.trim() || host || 'Egen bakgrundskarta';
-    addBasesAndUse([{ kind: 'xyz', title, template: url, attribution: host }]);
-  });
-
   function renderPick() {
     wmsLayerList.innerHTML = '';
-    const isWmts = wmsCaps.type === 'wmts';
-    wmsPick.querySelector('legend').textContent = isWmts ? 'Välj bakgrundskarta' : 'Välj lager';
-    $('wmsAddSelected').textContent = isWmts ? 'Lägg till som bakgrundskarta' : 'Lägg till valda';
-    const preselect = isWmts ? wmsCaps.layers.length === 1 : wmsCaps.layers.length <= 3;
+    const preselect = wmsCaps.layers.length <= 3;
     wmsCaps.layers.forEach((l, i) => {
       const li = document.createElement('li');
-      const hint = isWmts ? 'zoomnivå ' + l.minZoom + '–' + l.maxZoom : zoomHint(l);
+      const hint = zoomHint(l);
       li.innerHTML =
         '<label><input type="checkbox" data-i="' + i + '"' + (preselect ? ' checked' : '') + '>' +
         '<span><span class="layer-title">' + esc(l.title) + '</span>' +
@@ -1376,10 +1093,6 @@
     if (!wmsCaps) return;
     const picked = Array.from(wmsLayerList.querySelectorAll('input:checked')).map((cb) => wmsCaps.layers[+cb.dataset.i]);
     if (!picked.length) { setStatus('Välj minst ett lager.', true); return; }
-    if (wmsCaps.type === 'wmts') {
-      addBasesAndUse(picked.map((l) => Object.assign({}, l)));
-      return;
-    }
     const entries = picked.map((l) => addWmsLayer({
       url: wmsCaps.base, layers: l.name, title: l.title, version: wmsCaps.version, format: wmsCaps.format,
       crs: l.crs, maxScale: l.maxScale, minScale: l.minScale, opacity: 0.85, visible: true
@@ -1437,9 +1150,7 @@
     } catch (_) {}
     let wmsCount = 0;
     try { wmsCount = (JSON.parse(localStorage.getItem(WMS_KEY) || '[]') || []).length; } catch (_) {}
-    let wmtsCount = 0;
-    try { wmtsCount = (JSON.parse(localStorage.getItem(WMTS_KEY) || '[]') || []).length; } catch (_) {}
-    el.textContent = gpxText + ' · WMS-lager: ' + wmsCount + ' · Egna bakgrundskartor: ' + wmtsCount;
+    el.textContent = gpxText + ' · WMS-lager: ' + wmsCount;
   }
   function openCache() {
     cacheModal.hidden = false;
@@ -1453,14 +1164,10 @@
   cacheModal.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeCache));
 
   $('cacheClear').addEventListener('click', async () => {
-    if (!confirm('Töm lokal cache? Alla sparade GPX-filer, WMS-lager och egna bakgrundskartor tas bort från enheten och från kartan.')) return;
+    if (!confirm('Töm lokal cache? Alla sparade GPX-filer och WMS-lager tas bort från enheten och från kartan.')) return;
     await clearGpx();
     wmsAdded.slice().forEach((e) => removeWms(e.id));
-    wmtsAdded.slice().forEach((e) => removeWmtsBase(e.cfg.uid));
-    try {
-      [WMS_KEY, GPX_ORDER_KEY, WMTS_KEY, BASE_KEY].forEach((k) => localStorage.removeItem(k));
-    } catch (_) {}
-    setBase(baseLayers[DEFAULT_BASE]);
+    try { localStorage.removeItem(WMS_KEY); localStorage.removeItem(GPX_ORDER_KEY); } catch (_) {}
     await renderCacheStats();
     toast('Lokal cache tömd');
   });
@@ -1488,8 +1195,6 @@
   }
 
   loadWms();
-  loadWmts();
-  restoreBase();
   restoreGpx();
 })();
 </script>
