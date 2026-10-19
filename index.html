@@ -52,9 +52,18 @@
   #map { position: fixed; inset: 0; }
 
   /* Titelrad */
-  .titlebar {
+  .topleft {
     position: fixed; z-index: 1000;
     top: calc(10px + var(--safe-t)); left: calc(10px + var(--safe-l));
+    display: flex; align-items: center; gap: 8px;
+  }
+  .small-btn {
+    width: 40px; height: 40px; border: none; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--paper); color: var(--ink); box-shadow: var(--shadow); cursor: pointer;
+  }
+  .small-btn:focus-visible { outline: 3px solid var(--me); outline-offset: 2px; }
+  .titlebar {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 12px 6px 8px;
     background: var(--forest); color: #f2f5ef;
@@ -119,12 +128,7 @@
   .file-row .swatch { flex: none; width: 14px; height: 4px; border-radius: 2px; }
   .file-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-row .meta { color: var(--ink-soft); font-size: 13px; white-space: nowrap; margin-left: auto; }
-  .file-row .zoomto {
-    flex: none; width: 44px; height: 44px; border: none; background: none;
-    color: var(--ink-soft); cursor: pointer; border-radius: 8px;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  .file-row .zoomto:focus-visible, .file-row .remove:focus-visible, .pop-zoom:focus-visible {
+  .file-row .remove:focus-visible, .pop-zoom:focus-visible {
     outline: 3px solid var(--me); outline-offset: 2px;
   }
   .pop-zoom {
@@ -132,6 +136,15 @@
     padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--paper-2); color: var(--ink); font: 600 14px var(--font); cursor: pointer;
   }
+  .order-btn {
+    flex: none; width: 34px; height: 44px; border: none; background: none;
+    color: var(--ink-soft); cursor: pointer; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .order-btn:disabled { opacity: .25; cursor: default; }
+  .order-btn:focus-visible { outline: 3px solid var(--me); outline-offset: 2px; }
+  .sheet-note { margin: 0; padding: 2px 14px 6px; font-size: 12px; color: var(--ink-soft); }
+  .sheet.collapsed .sheet-note { display: none; }
   .file-row .remove {
     flex: none; width: 44px; height: 44px; border: none; background: none;
     color: var(--ink-soft); font-size: 22px; line-height: 1; cursor: pointer; border-radius: 8px;
@@ -201,6 +214,73 @@
     box-shadow: 0 0 0 2px rgba(31,111,209,.35), 0 1px 4px rgba(0,0,0,.4);
   }
 
+  /* WMS-dialog */
+  .modal { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: flex-end; justify-content: center; }
+  .modal[hidden] { display: none; }
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(10, 20, 15, .45); }
+  .modal-card {
+    position: relative; width: 100%; max-width: 520px; max-height: 88vh;
+    display: flex; flex-direction: column;
+    background: var(--paper); color: var(--ink);
+    border-radius: 16px 16px 0 0; box-shadow: var(--shadow);
+    padding-bottom: var(--safe-b);
+  }
+  @media (min-width: 600px) {
+    .modal { align-items: center; }
+    .modal-card { border-radius: 16px; padding-bottom: 0; }
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 6px 6px 18px; border-bottom: 1px solid var(--line);
+  }
+  .modal-head h2 { margin: 0; font: 600 19px var(--font-title); }
+  .modal-body { padding: 14px 18px 18px; overflow-y: auto; }
+  .icon-btn {
+    width: 44px; height: 44px; border: none; background: none; color: var(--ink-soft);
+    font-size: 26px; line-height: 1; cursor: pointer; border-radius: 8px;
+  }
+  .lbl { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .modal input[type="url"], .modal input[type="text"], .modal select {
+    width: 100%; min-height: 44px; padding: 8px 12px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--paper-2); color: var(--ink);
+    font: 16px var(--font); /* 16px förhindrar autozoom i iOS */
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .btn {
+    min-height: 44px; padding: 0 16px; border: none; border-radius: 10px;
+    background: var(--paper-2); color: var(--ink); font: 600 15px var(--font); cursor: pointer;
+  }
+  .btn.primary { background: var(--forest); color: #f2f5ef; }
+  .btn.link { background: none; color: var(--me); padding: 0 6px; font-weight: 500; }
+  .btn.danger { background: #b3261e; color: #fff; }
+  .cache-info { margin: 0 0 12px; font-size: 15px; line-height: 1.45; }
+  .cache-stats { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--paper-2); font-size: 14px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn:focus-visible, .icon-btn:focus-visible, .modal input:focus-visible, .modal select:focus-visible, .modal summary:focus-visible {
+    outline: 3px solid var(--me); outline-offset: 2px;
+  }
+  .status { margin: 10px 0 0; font-size: 14px; color: var(--ink-soft); min-height: 1em; }
+  .status.error { color: #c0392b; }
+  @media (prefers-color-scheme: dark) { .status.error { color: #ff8a7a; } }
+  .modal fieldset { border: 1px solid var(--line); border-radius: 12px; margin: 14px 0 0; padding: 6px 12px 12px; }
+  .modal fieldset[hidden] { display: none; }
+  .modal legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
+  .pick-list, .added-list { list-style: none; margin: 0 0 10px; padding: 0; }
+  .pick-list label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; cursor: pointer; }
+  .pick-list input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--forest); }
+  .layer-title { font-size: 15px; word-break: break-word; }
+  .layer-meta { display: block; font-size: 12.5px; color: var(--ink-soft); word-break: break-all; }
+  .modal details { margin-top: 14px; }
+  .modal summary { cursor: pointer; font-size: 14px; color: var(--ink-soft); padding: 6px 0; }
+  .modal h3 { margin: 18px 0 6px; font: 600 15px var(--font); }
+  .added-list li { padding: 8px 0; border-top: 1px solid var(--line); }
+  .added-top { display: flex; align-items: center; gap: 10px; }
+  .added-top input[type="checkbox"] { width: 20px; height: 20px; flex: none; accent-color: var(--forest); }
+  .added-top .grow { flex: 1; min-width: 0; }
+  .opacity-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 0 30px; font-size: 13px; color: var(--ink-soft); }
+  .opacity-row input { flex: 1; accent-color: var(--forest); }
+
   @media (prefers-reduced-motion: reduce) {
     .fab.locating svg { animation: none; }
     .toast { transition: none; }
@@ -210,12 +290,19 @@
 <body>
   <div id="map" role="application" aria-label="Karta"></div>
 
+  <div class="topleft">
   <div class="titlebar">
     <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="9" fill="none" stroke="#f2f5ef" stroke-width="2"/>
       <path d="M12 5 L15 12 L12 19 L9 12 Z" fill="#f2f5ef"/>
     </svg>
     am-i-in-gpx
+  </div>
+  <button type="button" class="small-btn" id="cacheBtn" aria-label="Lokal lagring" title="Lokal lagring">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+      <ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/><path d="M4 11.5v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>
+    </svg>
+  </button>
   </div>
 
   <p class="hint" id="hint">Lägg till en eller flera GPX-filer för att se dem i kartan.</p>
@@ -229,9 +316,15 @@
       </div>
     </div>
     <ul class="file-list" id="fileList"></ul>
+    <p class="sheet-note" id="sheetNote" hidden>Översta filen ritas överst i kartan.</p>
   </section>
 
   <div class="fab-stack">
+    <button type="button" class="fab icon" id="wmsBtn" aria-label="WMS-lager" title="WMS-lager">
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+        <path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/>
+      </svg>
+    </button>
     <button type="button" class="fab icon" id="locateBtn" aria-pressed="false" aria-label="Visa min position" title="Visa min position">
       <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/>
@@ -247,6 +340,64 @@
   </div>
   <input type="file" id="fileInput" accept=".gpx,application/gpx+xml,application/xml,text/xml" multiple hidden>
 
+  <div class="modal" id="wmsModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="wmsTitle">
+      <header class="modal-head">
+        <h2 id="wmsTitle">WMS-lager</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Stäng">&times;</button>
+      </header>
+      <div class="modal-body">
+        <label for="wmsUrl" class="lbl">Adress till WMS-tjänst</label>
+        <input id="wmsUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="https://…/WMSServer?SERVICE=WMS&amp;REQUEST=GetCapabilities">
+        <div class="row">
+          <button type="button" class="btn primary" id="wmsFetch">Hämta lager</button>
+        </div>
+        <p class="status" id="wmsStatus" role="status" aria-live="polite"></p>
+
+        <fieldset id="wmsPick" hidden>
+          <legend>Välj lager</legend>
+          <ul class="pick-list" id="wmsLayerList"></ul>
+          <button type="button" class="btn primary" id="wmsAddSelected">Lägg till valda</button>
+        </fieldset>
+
+        <details id="wmsManual">
+          <summary>Ange lagernamn manuellt</summary>
+          <label for="wmsManualName" class="lbl" style="margin-top:8px">Lagernamn (flera separeras med komma)</label>
+          <input id="wmsManualName" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <label for="wmsManualCrs" class="lbl" style="margin-top:10px">Koordinatsystem</label>
+          <select id="wmsManualCrs">
+            <option value="EPSG:3857">EPSG:3857 (webbkarta, vanligast)</option>
+            <option value="EPSG:4326">EPSG:4326 (WGS 84)</option>
+          </select>
+          <div class="row"><button type="button" class="btn" id="wmsManualAdd">Lägg till</button></div>
+        </details>
+
+        <div id="wmsAddedWrap" hidden>
+          <h3>Tillagda lager</h3>
+          <p class="layer-meta" style="margin:0 0 6px">Översta lagret ritas överst i kartan.</p>
+          <ul class="added-list" id="wmsAddedList"></ul>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal" id="cacheModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cacheTitle">
+      <header class="modal-head">
+        <h2 id="cacheTitle">Lokal lagring</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Stäng">&times;</button>
+      </header>
+      <div class="modal-body">
+        <p class="cache-info">GPX-filer och WMS-lager du lägger till sparas automatiskt i den här webbläsaren och visas igen nästa gång du öppnar sidan. Inget skickas till någon server.</p>
+        <p class="cache-stats" id="cacheStats">Räknar …</p>
+        <button type="button" class="btn danger" id="cacheClear">Töm lokal cache</button>
+      </div>
+    </section>
+  </div>
+
   <div class="drop-overlay" aria-hidden="true">Släpp GPX-filerna här</div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -258,9 +409,6 @@
   /* ---------- Bakgrundskartor (öppna och gratis) ---------- */
   const osmAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bidragsgivare';
   const baseLayers = {
-    'OpenStreetMap': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: osmAttr
-    }),
     'Terräng (OpenTopoMap)': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
       maxZoom: 17, subdomains: 'abc',
       attribution: osmAttr + ', SRTM | Stil: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
@@ -269,10 +417,6 @@
       maxZoom: 20, subdomains: 'abc',
       attribution: osmAttr + ' | Stil: <a href="https://www.cyclosm.org">CyclOSM</a>'
     }),
-    'Ljus (CARTO)': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20, subdomains: 'abcd',
-      attribution: osmAttr + ' &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    })
   };
 
   const map = L.map('map', {
@@ -282,7 +426,7 @@
     zoomControl: true
   });
   map.zoomControl.setPosition('topright');
-  L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+  const layerControl = L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
   map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
 
   /* ---------- Hjälpfunktioner ---------- */
@@ -348,6 +492,92 @@
       return ll ? { name: childText(w, 'name'), latlng: ll } : null;
     }).filter(Boolean);
     return { lines, waypoints };
+  }
+
+  /* ---------- Lokal lagring av GPX (IndexedDB, rymmer stora filer) ---------- */
+  const DB_NAME = 'am-i-in-gpx';
+  const GPX_STORE = 'gpx';
+  let dbPromise = null;
+  function openDb() {
+    if (!dbPromise) {
+      dbPromise = new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)) { reject(new Error('IndexedDB saknas')); return; }
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(GPX_STORE, { keyPath: 'key', autoIncrement: true });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    return dbPromise;
+  }
+  async function idb(mode, fn) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(GPX_STORE, mode);
+      const req = fn(tx.objectStore(GPX_STORE));
+      tx.oncomplete = () => resolve(req ? req.result : undefined);
+      tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  }
+  const gpxStore = {
+    add: (rec) => idb('readwrite', (st) => st.add(rec)),
+    del: (key) => idb('readwrite', (st) => st.delete(key)),
+    all: () => idb('readonly', (st) => st.getAll()),
+    clear: () => idb('readwrite', (st) => st.clear())
+  };
+  let persistAsked = false;
+  function requestPersist() {
+    // Ber webbläsaren att inte rensa datan automatiskt när utrymmet tryter
+    if (!persistAsked && navigator.storage && navigator.storage.persist) {
+      persistAsked = true;
+      navigator.storage.persist().catch(() => {});
+    }
+  }
+  async function saveGpx(entry, text) {
+    try {
+      entry.dbKey = await gpxStore.add({ name: entry.name, text, added: Date.now() });
+      saveGpxOrder();
+      if (entry.removed) gpxStore.del(entry.dbKey).catch(() => {});
+      requestPersist();
+    } catch (_) {
+      toast('Kunde inte spara ' + entry.name + ' lokalt.');
+    }
+  }
+
+  /* ---------- Lagerordning ---------- */
+  const GPX_ORDER_KEY = 'am-i-in-gpx:gpx-order';
+  const ICON_UP = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>';
+  const ICON_DOWN = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  // Listorna visas med översta lagret först; arrayerna lagras nerifrån och upp
+  function orderButtons(kind, id, idx, count, name) {
+    if (count < 2) return '';
+    return '<button type="button" class="order-btn" data-kind="' + kind + '" data-id="' + id + '" data-dir="1"' +
+             (idx === 0 ? ' disabled' : '') + ' aria-label="Flytta upp ' + esc(name) + '" title="Flytta upp">' + ICON_UP + '</button>' +
+           '<button type="button" class="order-btn" data-kind="' + kind + '" data-id="' + id + '" data-dir="-1"' +
+             (idx === count - 1 ? ' disabled' : '') + ' aria-label="Flytta ner ' + esc(name) + '" title="Flytta ner">' + ICON_DOWN + '</button>';
+  }
+  function moveInArray(arr, id, dir) {
+    const i = arr.findIndex((x) => x.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return false;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    return true;
+  }
+  function refocusOrder(kind, id, dir) {
+    const sel = '.order-btn[data-kind="' + kind + '"][data-id="' + id + '"]';
+    const btn = document.querySelector(sel + '[data-dir="' + dir + '"]:not(:disabled)') ||
+                document.querySelector(sel + ':not(:disabled)');
+    if (btn) btn.focus();
+  }
+  function saveGpxOrder() {
+    try { localStorage.setItem(GPX_ORDER_KEY, JSON.stringify(loaded.map((e) => e.dbKey).filter((k) => k != null))); } catch (_) {}
+  }
+  function moveGpx(id, dir) {
+    if (!moveInArray(loaded, id, dir)) return;
+    loaded.forEach((e) => e.group.bringToFront());
+    saveGpxOrder();
+    renderList();
+    refocusOrder('gpx', id, dir);
   }
 
   /* ---------- Filhantering ---------- */
@@ -416,7 +646,9 @@
     for (const f of files) {
       try {
         const text = await f.text();
-        added.push(addGpx(f.name, text));
+        const entry = addGpx(f.name, text);
+        added.push(entry);
+        saveGpx(entry, text);
       } catch (err) {
         failed.push(f.name + ' (' + (err.message || 'kunde inte läsas') + ')');
       }
@@ -434,8 +666,12 @@
   function removeEntry(id) {
     const i = loaded.findIndex((e) => e.id === id);
     if (i < 0) return;
-    map.removeLayer(loaded[i].group);
+    const e = loaded[i];
+    e.removed = true;
+    map.removeLayer(e.group);
+    if (e.dbKey != null) gpxStore.del(e.dbKey).catch(() => {});
     loaded.splice(i, 1);
+    saveGpxOrder();
     renderList();
   }
 
@@ -444,7 +680,8 @@
   const listEl = $('fileList');
   function renderList() {
     listEl.innerHTML = '';
-    loaded.forEach((e) => {
+    const n = loaded.length;
+    loaded.slice().reverse().forEach((e, idx) => {
       const li = document.createElement('li');
       li.className = 'file-row';
       li.innerHTML =
@@ -453,16 +690,17 @@
           '<span class="name">' + esc(e.name) + '</span>' +
           (e.length ? '<span class="meta">' + fmtDist(e.length) + '</span>' : '') +
         '</button>' +
-        '<button type="button" class="zoomto" aria-label="Zooma till ' + esc(e.name) + '" title="Zooma till lager">' + ZOOM_ICON + '</button>' +
+        orderButtons('gpx', e.id, idx, n, e.name) +
         '<button type="button" class="remove" aria-label="Ta bort ' + esc(e.name) + '">&times;</button>';
       li.querySelector('.zoom').addEventListener('click', () => zoomToEntry(e.id));
-      li.querySelector('.zoomto').addEventListener('click', () => zoomToEntry(e.id));
+      li.querySelectorAll('.order-btn').forEach((b) => b.addEventListener('click', () => moveGpx(e.id, +b.dataset.dir)));
       li.querySelector('.remove').addEventListener('click', () => removeEntry(e.id));
       listEl.appendChild(li);
     });
     sheet.classList.toggle('has-files', loaded.length > 0);
     $('sheetTitle').textContent = loaded.length === 1 ? '1 fil' : loaded.length + ' filer';
     $('hint').hidden = loaded.length > 0;
+    $('sheetNote').hidden = loaded.length < 2;
   }
 
   $('toggleList').addEventListener('click', (ev) => {
@@ -470,11 +708,14 @@
     ev.currentTarget.textContent = collapsed ? 'Visa' : 'Dölj';
     ev.currentTarget.setAttribute('aria-expanded', String(!collapsed));
   });
-  $('clearAll').addEventListener('click', () => {
-    loaded.forEach((e) => map.removeLayer(e.group));
+  function clearGpx() {
+    loaded.forEach((e) => { e.removed = true; map.removeLayer(e.group); });
     loaded.length = 0;
     renderList();
-  });
+    try { localStorage.removeItem(GPX_ORDER_KEY); } catch (_) {}
+    return gpxStore.clear().catch(() => {});
+  }
+  $('clearAll').addEventListener('click', clearGpx);
 
   const fileInput = $('fileInput');
   $('addBtn').addEventListener('click', () => fileInput.click());
@@ -559,6 +800,368 @@
   });
 
   renderList();
+
+  /* ---------- WMS-lager ---------- */
+  const WMS_KEY = 'am-i-in-gpx:wms';
+  const MERCATOR_CODES = ['EPSG:3857', 'EPSG:900913', 'EPSG:102100', 'EPSG:102113'];
+  const SCALE_Z0 = 559082264; // skaltal vid zoomnivå 0 i webbmercator
+
+  const wmsModal = $('wmsModal');
+  const wmsUrl = $('wmsUrl');
+  const wmsStatus = $('wmsStatus');
+  const wmsPick = $('wmsPick');
+  const wmsLayerList = $('wmsLayerList');
+  const wmsAdded = []; // { id, cfg, layer }
+  let wmsNextId = 1;
+  let wmsCaps = null;  // { base, version, format, layers }
+
+  function setStatus(msg, isError) {
+    wmsStatus.textContent = msg || '';
+    wmsStatus.classList.toggle('error', !!isError);
+  }
+
+  // Tar bort WMS-parametrar så att bara tjänstens basadress blir kvar
+  function wmsBase(raw) {
+    const u = new URL(raw.trim());
+    const drop = ['service', 'request', 'version', 'layers', 'styles', 'format', 'crs', 'srs', 'bbox', 'width', 'height', 'transparent'];
+    for (const k of Array.from(u.searchParams.keys())) {
+      if (drop.includes(k.toLowerCase())) u.searchParams.delete(k);
+    }
+    return u.toString();
+  }
+
+  function crsFor(code) {
+    if (code === 'EPSG:4326') return L.CRS.EPSG4326;
+    if (code === 'EPSG:3857') return L.CRS.EPSG3857;
+    return L.Util.extend({}, L.CRS.EPSG3857, { code }); // t.ex. EPSG:102100 = samma projektion
+  }
+
+  function zoomRange(cfg) {
+    const minZ = cfg.maxScale ? Math.max(0, Math.ceil(Math.log2(SCALE_Z0 / cfg.maxScale))) : null;
+    const maxZ = cfg.minScale ? Math.floor(Math.log2(SCALE_Z0 / cfg.minScale)) : null;
+    return { minZ, maxZ };
+  }
+  function zoomHint(cfg) {
+    const { minZ, maxZ } = zoomRange(cfg);
+    if (minZ != null && maxZ != null) return 'syns på zoomnivå ' + minZ + '–' + maxZ;
+    if (minZ != null) return 'syns från zoomnivå ' + minZ;
+    if (maxZ != null) return 'syns upp till zoomnivå ' + maxZ;
+    return '';
+  }
+
+  function parseCaps(text) {
+    const xml = new DOMParser().parseFromString(text, 'application/xml');
+    if (xml.getElementsByTagName('parsererror').length) throw new Error('svaret är inte giltig XML');
+    const root = xml.documentElement;
+    if (/Exception/i.test(root.localName)) {
+      throw new Error('tjänsten svarade med ett fel: ' + root.textContent.trim().slice(0, 160));
+    }
+    if (!/WMS_Capabilities|WMT_MS_Capabilities/.test(root.localName)) {
+      throw new Error('svaret är inte ett WMS GetCapabilities-dokument');
+    }
+    const version = root.getAttribute('version') || '1.3.0';
+    const getMap = byTag(xml, 'GetMap')[0];
+    const formats = getMap ? byTag(getMap, 'Format').map((f) => f.textContent.trim()) : [];
+    const format = formats.includes('image/png') ? 'image/png' : (formats.find((f) => /png/i.test(f)) || 'image/png');
+
+    const layers = byTag(xml, 'Layer').map((el) => {
+      const name = childText(el, 'Name');
+      if (!name) return null;
+      // Koordinatsystem ärvs från överliggande lager
+      const crsSet = new Set();
+      for (let n = el; n && n.localName === 'Layer'; n = n.parentElement) {
+        for (const c of n.children) {
+          if (c.localName === 'CRS' || c.localName === 'SRS') {
+            c.textContent.trim().split(/\s+/).forEach((x) => crsSet.add(x.toUpperCase()));
+          }
+        }
+      }
+      const merc = MERCATOR_CODES.find((c) => crsSet.has(c));
+      const crs = merc || (crsSet.has('EPSG:4326') ? 'EPSG:4326' : 'EPSG:3857');
+      return {
+        name,
+        title: childText(el, 'Title') || name,
+        crs,
+        maxScale: parseFloat(childText(el, 'MaxScaleDenominator')) || null,
+        minScale: parseFloat(childText(el, 'MinScaleDenominator')) || null
+      };
+    }).filter(Boolean);
+
+    if (!layers.length) throw new Error('tjänsten listar inga lager');
+    return { version, format, layers };
+  }
+
+  async function fetchCaps() {
+    let base;
+    try { base = wmsBase(wmsUrl.value); } catch (_) {
+      setStatus('Det där ser inte ut som en giltig webbadress.', true);
+      return;
+    }
+    const capUrl = new URL(base);
+    capUrl.searchParams.set('SERVICE', 'WMS');
+    capUrl.searchParams.set('REQUEST', 'GetCapabilities');
+
+    const btn = $('wmsFetch');
+    btn.disabled = true;
+    wmsPick.hidden = true;
+    setStatus('Hämtar lagerlistan …');
+    try {
+      const res = await fetch(capUrl.toString());
+      if (!res.ok) throw new Error('servern svarade ' + res.status);
+      const caps = parseCaps(await res.text());
+      wmsCaps = Object.assign({ base }, caps);
+      renderPick();
+      setStatus(caps.layers.length === 1 ? 'Hittade 1 lager.' : 'Hittade ' + caps.layers.length + ' lager.');
+    } catch (err) {
+      wmsCaps = null;
+      const corsLike = err instanceof TypeError;
+      setStatus(corsLike
+        ? 'Kunde inte läsa lagerlistan. Servern tillåter troligen inte att den hämtas direkt från webbläsaren. Ange lagernamnet manuellt nedan.'
+        : 'Kunde inte läsa lagerlistan: ' + err.message, true);
+      $('wmsManual').open = true;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderPick() {
+    wmsLayerList.innerHTML = '';
+    const preselect = wmsCaps.layers.length <= 3;
+    wmsCaps.layers.forEach((l, i) => {
+      const li = document.createElement('li');
+      const hint = zoomHint(l);
+      li.innerHTML =
+        '<label><input type="checkbox" data-i="' + i + '"' + (preselect ? ' checked' : '') + '>' +
+        '<span><span class="layer-title">' + esc(l.title) + '</span>' +
+        '<span class="layer-meta">' + esc(l.name) + (hint ? ' · ' + esc(hint) : '') + '</span></span></label>';
+      wmsLayerList.appendChild(li);
+    });
+    wmsPick.hidden = false;
+  }
+
+  function addWmsLayer(cfg) {
+    let host = '';
+    try { host = new URL(cfg.url).hostname; } catch (_) {}
+    const layer = L.tileLayer.wms(cfg.url, {
+      layers: cfg.layers,
+      styles: '',
+      format: cfg.format || 'image/png',
+      transparent: true,
+      version: cfg.version || '1.3.0',
+      crs: crsFor(cfg.crs),
+      opacity: cfg.opacity != null ? cfg.opacity : 0.85,
+      maxZoom: 20,
+      zIndex: 10 + wmsNextId,
+      attribution: esc(cfg.title) + (host ? ' (' + esc(host) + ')' : '')
+    });
+    const entry = { id: wmsNextId++, cfg, layer };
+    let warned = false;
+    layer.on('tileerror', () => {
+      if (!warned) { warned = true; toast('WMS-lagret ”' + cfg.title + '” gav fel. Kontrollera adress och lagernamn.'); }
+    });
+    layer.on('add remove', () => {
+      cfg.visible = map.hasLayer(layer);
+      saveWms();
+      renderWmsAdded();
+    });
+    wmsAdded.push(entry);
+    layerControl.addOverlay(layer, esc(cfg.title));
+    if (cfg.visible !== false) layer.addTo(map);
+    return entry;
+  }
+
+  function removeWms(id) {
+    const i = wmsAdded.findIndex((e) => e.id === id);
+    if (i < 0) return;
+    const e = wmsAdded[i];
+    e.layer.off();
+    layerControl.removeLayer(e.layer);
+    map.removeLayer(e.layer);
+    wmsAdded.splice(i, 1);
+    saveWms();
+    renderWmsAdded();
+  }
+
+  function renderWmsAdded() {
+    const list = $('wmsAddedList');
+    list.innerHTML = '';
+    const n = wmsAdded.length;
+    wmsAdded.slice().reverse().forEach((e, idx) => {
+      const hint = zoomHint(e.cfg);
+      const li = document.createElement('li');
+      li.innerHTML =
+        '<div class="added-top">' +
+          '<input type="checkbox" aria-label="Visa ' + esc(e.cfg.title) + '"' + (map.hasLayer(e.layer) ? ' checked' : '') + '>' +
+          '<div class="grow"><span class="layer-title">' + esc(e.cfg.title) + '</span>' +
+          (hint ? '<span class="layer-meta">' + esc(hint) + '</span>' : '') + '</div>' +
+          orderButtons('wms', e.id, idx, n, e.cfg.title) +
+          '<button type="button" class="icon-btn" aria-label="Ta bort ' + esc(e.cfg.title) + '">&times;</button>' +
+        '</div>' +
+        '<label class="opacity-row">Opacitet <input type="range" min="0.1" max="1" step="0.05" value="' + (e.layer.options.opacity) + '"></label>';
+      li.querySelector('input[type="checkbox"]').addEventListener('change', (ev) => {
+        if (ev.target.checked) e.layer.addTo(map); else map.removeLayer(e.layer);
+      });
+      li.querySelector('.icon-btn').addEventListener('click', () => removeWms(e.id));
+      li.querySelectorAll('.order-btn').forEach((b) => b.addEventListener('click', () => moveWms(e.id, +b.dataset.dir)));
+      const range = li.querySelector('input[type="range"]');
+      range.addEventListener('input', () => {
+        e.layer.setOpacity(parseFloat(range.value));
+        e.cfg.opacity = parseFloat(range.value);
+      });
+      range.addEventListener('change', saveWms);
+      list.appendChild(li);
+    });
+    $('wmsAddedWrap').hidden = wmsAdded.length === 0;
+  }
+
+  // zIndex följer arrayens ordning; lagerväljaren visar översta först
+  function applyWmsOrder() {
+    wmsAdded.forEach((e, i) => { e.layer.setZIndex(10 + i); layerControl.removeLayer(e.layer); });
+    wmsAdded.slice().reverse().forEach((e) => layerControl.addOverlay(e.layer, esc(e.cfg.title)));
+  }
+  function moveWms(id, dir) {
+    if (!moveInArray(wmsAdded, id, dir)) return;
+    applyWmsOrder();
+    saveWms();
+    renderWmsAdded();
+    refocusOrder('wms', id, dir);
+  }
+
+  function saveWms() {
+    try { localStorage.setItem(WMS_KEY, JSON.stringify(wmsAdded.map((e) => e.cfg))); } catch (_) {}
+  }
+  function loadWms() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(WMS_KEY) || '[]');
+      if (Array.isArray(arr)) arr.forEach((c) => { if (c && c.url && c.layers) addWmsLayer(c); });
+    } catch (_) {}
+    applyWmsOrder();
+    renderWmsAdded();
+  }
+
+  function afterAdd(entries) {
+    applyWmsOrder();
+    renderWmsAdded();
+    saveWms();
+    if (!entries.length) return;
+    const z = map.getZoom();
+    const hidden = entries.filter((e) => {
+      const { minZ, maxZ } = zoomRange(e.cfg);
+      return (minZ != null && z < minZ) || (maxZ != null && z > maxZ);
+    });
+    let msg = entries.length === 1 ? 'La till ' + entries[0].cfg.title : 'La till ' + entries.length + ' WMS-lager';
+    if (hidden.length === entries.length) msg += '. Zooma för att se ' + (entries.length > 1 ? 'dem' : 'det') + ' (' + hidden.map((e) => zoomHint(e.cfg)).join(', ') + ').';
+    toast(msg);
+    closeWms();
+  }
+
+  $('wmsAddSelected').addEventListener('click', () => {
+    if (!wmsCaps) return;
+    const picked = Array.from(wmsLayerList.querySelectorAll('input:checked')).map((cb) => wmsCaps.layers[+cb.dataset.i]);
+    if (!picked.length) { setStatus('Välj minst ett lager.', true); return; }
+    const entries = picked.map((l) => addWmsLayer({
+      url: wmsCaps.base, layers: l.name, title: l.title, version: wmsCaps.version, format: wmsCaps.format,
+      crs: l.crs, maxScale: l.maxScale, minScale: l.minScale, opacity: 0.85, visible: true
+    }));
+    afterAdd(entries);
+  });
+
+  $('wmsManualAdd').addEventListener('click', () => {
+    let base;
+    try { base = wmsBase(wmsUrl.value); } catch (_) {
+      setStatus('Fyll i tjänstens adress först.', true);
+      return;
+    }
+    const names = $('wmsManualName').value.split(',').map((x) => x.trim()).filter(Boolean);
+    if (!names.length) { setStatus('Skriv minst ett lagernamn.', true); return; }
+    const entries = names.map((n) => addWmsLayer({
+      url: base, layers: n, title: n, version: '1.3.0', format: 'image/png',
+      crs: $('wmsManualCrs').value, opacity: 0.85, visible: true
+    }));
+    afterAdd(entries);
+  });
+
+  function openWms() {
+    wmsModal.hidden = false;
+    setStatus('');
+  }
+  function closeWms() {
+    wmsModal.hidden = true;
+    $('wmsBtn').focus();
+  }
+  $('wmsBtn').addEventListener('click', openWms);
+  wmsModal.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeWms));
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!wmsModal.hidden) closeWms();
+    if (!cacheModal.hidden) closeCache();
+  });
+  $('wmsFetch').addEventListener('click', fetchCaps);
+  wmsUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchCaps(); });
+
+  /* ---------- Lokal cache: översikt och tömning ---------- */
+  const cacheModal = $('cacheModal');
+  function fmtBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toLocaleString('sv-SE', { maximumFractionDigits: 0 }) + ' kB';
+    return (b / 1048576).toLocaleString('sv-SE', { maximumFractionDigits: 1 }) + ' MB';
+  }
+  async function renderCacheStats() {
+    const el = $('cacheStats');
+    let gpxText = 'GPX-filer: kunde inte läsas';
+    try {
+      const recs = await gpxStore.all();
+      const bytes = recs.reduce((sum, r) => sum + new Blob([r.text]).size, 0);
+      gpxText = 'GPX-filer: ' + recs.length + (recs.length ? ' (' + fmtBytes(bytes) + ')' : '');
+    } catch (_) {}
+    let wmsCount = 0;
+    try { wmsCount = (JSON.parse(localStorage.getItem(WMS_KEY) || '[]') || []).length; } catch (_) {}
+    el.textContent = gpxText + ' · WMS-lager: ' + wmsCount;
+  }
+  function openCache() {
+    cacheModal.hidden = false;
+    renderCacheStats();
+  }
+  function closeCache() {
+    cacheModal.hidden = true;
+    $('cacheBtn').focus();
+  }
+  $('cacheBtn').addEventListener('click', openCache);
+  cacheModal.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeCache));
+
+  $('cacheClear').addEventListener('click', async () => {
+    if (!confirm('Töm lokal cache? Alla sparade GPX-filer och WMS-lager tas bort från enheten och från kartan.')) return;
+    await clearGpx();
+    wmsAdded.slice().forEach((e) => removeWms(e.id));
+    try { localStorage.removeItem(WMS_KEY); localStorage.removeItem(GPX_ORDER_KEY); } catch (_) {}
+    await renderCacheStats();
+    toast('Lokal cache tömd');
+  });
+
+  async function restoreGpx() {
+    let recs = [];
+    try { recs = await gpxStore.all(); } catch (_) { return; }
+    if (!recs.length) return;
+    let order = [];
+    try { order = JSON.parse(localStorage.getItem(GPX_ORDER_KEY) || '[]') || []; } catch (_) {}
+    const rank = (r) => { const i = order.indexOf(r.key); return i < 0 ? 1e9 + r.key : i; };
+    recs.sort((a, b) => rank(a) - rank(b));
+    const b = L.latLngBounds([]);
+    recs.forEach((r) => {
+      try {
+        const e = addGpx(r.name, r.text);
+        e.dbKey = r.key;
+        b.extend(e.bounds);
+      } catch (_) {
+        gpxStore.del(r.key).catch(() => {});
+      }
+    });
+    renderList();
+    if (b.isValid()) map.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
+  }
+
+  loadWms();
+  restoreGpx();
 })();
 </script>
 </body>
