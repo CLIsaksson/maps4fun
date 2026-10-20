@@ -70,7 +70,13 @@
     border-radius: 999px; box-shadow: var(--shadow);
     font-family: var(--font-title); font-weight: 600; font-size: 17px; letter-spacing: .01em;
     pointer-events: none;
+    transition: background-color .3s;
   }
+  .titlebar.is-in { background: #1e8e3e; }
+  .titlebar.is-out { background: #c62828; }
+  .titlebar .check-state { font: 600 13px var(--font); opacity: .95; }
+  .titlebar .check-state:empty { display: none; }
+  @media (prefers-reduced-motion: reduce) { .titlebar { transition: none; } }
   .titlebar svg { flex: none; }
 
   /* Knappar nere till höger */
@@ -135,6 +141,18 @@
     outline: 3px solid var(--me); outline-offset: 2px;
   }
   .style-editor { flex-basis: 100%; padding: 4px 14px 12px; border-bottom: 1px solid var(--line); }
+  .alias-row { display: block; margin-bottom: 10px; font-size: 13px; color: var(--ink-soft); }
+  .alias-row span { display: block; margin-bottom: 4px; }
+  .alias-input {
+    width: 100%; min-height: 40px; padding: 6px 10px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--paper-2); color: var(--ink); font: 16px var(--font);
+  }
+  .alias-input:focus-visible { outline: 3px solid var(--me); outline-offset: 1px; }
+  .check-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 14px; color: var(--ink); cursor: pointer; }
+  .check-row input { width: 22px; height: 22px; margin: 0; flex: none; accent-color: var(--forest); }
+  .check-row.disabled { color: var(--ink-soft); cursor: default; }
+  .check-badge { flex: none; display: inline-flex; color: var(--ink-soft); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip {
     width: 32px; height: 32px; padding: 0; border-radius: 50%; cursor: pointer;
@@ -300,6 +318,53 @@
   .opacity-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 0 30px; font-size: 13px; color: var(--ink-soft); }
   .opacity-row input { flex: 1; accent-color: var(--forest); }
 
+  /* Rensa-knapp i adressfältet */
+  .input-wrap { position: relative; }
+  .input-wrap input { padding-right: 48px !important; }
+  .clear-btn {
+    position: absolute; top: 50%; right: 2px; transform: translateY(-50%);
+    width: 44px; height: 44px; border: none; border-radius: 8px; background: none;
+    color: var(--ink-soft); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .clear-btn[hidden] { display: none; }
+  .clear-btn:focus-visible { outline: 3px solid var(--me); outline-offset: -3px; }
+
+  /* Teckenförklaring */
+  .small-btn[hidden] { display: none; }
+  .small-btn[aria-expanded="true"] { background: var(--forest); color: #f2f5ef; }
+  .legend-panel {
+    position: fixed; z-index: 999;
+    top: calc(62px + var(--safe-t)); left: calc(10px + var(--safe-l));
+    width: min(300px, calc(100% - 20px - var(--safe-l) - var(--safe-r)));
+    max-height: 45vh; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--paper); color: var(--ink); border-radius: 14px; box-shadow: var(--shadow);
+  }
+  .legend-panel[hidden] { display: none; }
+  .legend-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2px 2px 2px 14px; border-bottom: 1px solid var(--line); font-weight: 600; font-size: 14px;
+  }
+  .legend-body { overflow-y: auto; padding: 8px 14px 12px; }
+  .legend-item + .legend-item { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .legend-title { margin-bottom: 6px; font-size: 13px; font-weight: 600; word-break: break-word; }
+  .legend-item img { display: block; max-width: 100%; height: auto; padding: 4px; border-radius: 4px; background: #fff; }
+  body.measuring .legend-panel { display: none; }
+  body.legend-open .hint { display: none; }
+
+  /* WMS-information (GetFeatureInfo) */
+  .fi-popup .leaflet-popup-content { margin: 12px 14px; }
+  .fi-section + .fi-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .fi-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+  .fi-table + .fi-table { margin-top: 12px; }
+  .fi-table th {
+    width: 42%; padding: 3px 8px 3px 0; text-align: left; vertical-align: top;
+    font-weight: 600; color: var(--ink-soft); word-break: break-word;
+  }
+  .fi-table td { padding: 3px 0; word-break: break-word; }
+  .fi-table tr + tr th, .fi-table tr + tr td { border-top: 1px solid var(--line); }
+  .fi-frame { width: 100%; height: 220px; margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .fi-pre { margin: 6px 0 0; white-space: pre-wrap; font-size: 12px; }
+
   /* Mätverktyg */
   .measure-panel {
     position: fixed; z-index: 1000;
@@ -349,13 +414,28 @@
       <path d="M12 5 L15 12 L12 19 L9 12 Z" fill="#f2f5ef"/>
     </svg>
     am-i-in-gpx
+    <span class="check-state" id="checkState" aria-live="polite"></span>
   </div>
   <button type="button" class="small-btn" id="cacheBtn" aria-label="Lokal lagring" title="Lokal lagring">
     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
       <ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/><path d="M4 11.5v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>
     </svg>
   </button>
+  <button type="button" class="small-btn" id="legendBtn" hidden aria-expanded="false" aria-controls="legendPanel" aria-label="Teckenförklaring" title="Teckenförklaring">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <rect x="3" y="4" width="5" height="4" rx="1"/><rect x="3" y="10" width="5" height="4" rx="1"/><rect x="3" y="16" width="5" height="4" rx="1"/>
+      <path d="M11 6h10M11 12h10M11 18h10"/>
+    </svg>
+  </button>
   </div>
+
+  <section class="legend-panel" id="legendPanel" hidden aria-labelledby="legendTitle">
+    <div class="legend-head">
+      <span id="legendTitle">Teckenförklaring</span>
+      <button type="button" class="icon-btn" id="legendClose" aria-label="Stäng teckenförklaringen">&times;</button>
+    </div>
+    <div class="legend-body" id="legendBody"></div>
+  </section>
 
   <p class="hint" id="hint">Lägg till en eller flera GPX-filer för att se dem i kartan.</p>
 
@@ -406,8 +486,13 @@
       </header>
       <div class="modal-body">
         <label for="wmsUrl" class="lbl">Adress till WMS-tjänst</label>
-        <input id="wmsUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
-               placeholder="https://…/WMSServer?SERVICE=WMS&amp;REQUEST=GetCapabilities">
+        <div class="input-wrap">
+          <input id="wmsUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+                 placeholder="https://…/WMSServer?SERVICE=WMS&amp;REQUEST=GetCapabilities">
+          <button type="button" class="clear-btn" id="wmsClear" hidden aria-label="Rensa adressen" title="Rensa">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
         <div class="row">
           <button type="button" class="btn primary" id="wmsFetch">Hämta lager</button>
         </div>
@@ -698,7 +783,9 @@
   function saveStyles() {
     try {
       const out = {};
-      loaded.forEach((e) => { if (e.dbKey != null) out[e.dbKey] = { color: e.color, weight: e.weight }; });
+      loaded.forEach((e) => {
+        if (e.dbKey != null) out[e.dbKey] = { color: e.color, weight: e.weight, alias: e.alias || '', check: !!e.check };
+      });
       localStorage.setItem(GPX_STYLE_KEY, JSON.stringify(out));
     } catch (_) {}
   }
@@ -716,6 +803,8 @@
 
   /* ---------- Filhantering ---------- */
   const loaded = []; // { id, name, color, group, bounds, length }
+  let lastPos = null;     // senaste kända position
+  let lastInside = null;  // senaste resultatet av am-i-in-gpx-kontrollen
   let nextId = 1;
 
   const DEFAULT_WEIGHT = 4.5;
@@ -723,8 +812,15 @@
     if (!st) return {};
     return {
       color: /^#[0-9a-f]{6}$/i.test(st.color) ? st.color : null,
-      weight: Number.isFinite(st.weight) && st.weight >= 2 && st.weight <= 12 ? st.weight : null
+      weight: Number.isFinite(st.weight) && st.weight >= 2 && st.weight <= 12 ? st.weight : null,
+      alias: typeof st.alias === 'string' ? st.alias.trim().slice(0, 80) : '',
+      check: st.check === true
     };
+  }
+  // Visningsnamnet är aliaset om det finns, annars filnamnet
+  const displayName = (e) => e.alias || e.name;
+  function updatePopups(e) {
+    e.popups.forEach(({ layer, sub }) => layer.setPopupContent(popupHtml(displayName(e), sub)));
   }
   function applyStyle(e) {
     e.lines.forEach(({ casing, line }) => {
@@ -743,6 +839,9 @@
 
     const id = nextId++;
     const st = validStyle(savedStyle);
+    const alias = st.alias || '';
+    const shownName = alias || fileName;
+    const popupRefs = [];
     const autoColor = palette[colorIndex++ % palette.length];
     const color = st.color || autoColor;
     const weight = st.weight || DEFAULT_WEIGHT;
@@ -758,19 +857,22 @@
       // Vit kontur under linjen gör den lättläst på alla bakgrundskartor
       const casing = L.polyline(ln.latlngs, { color: '#fff', weight: weight + 3.5, opacity: .85, interactive: false }).addTo(group);
       const line = L.polyline(ln.latlngs, { color, weight, opacity: 1 })
-        .bindPopup(popupHtml(fileName, sub))
+        .bindPopup(popupHtml(shownName, sub))
         .addTo(group);
       lineRefs.push({ casing, line });
+      popupRefs.push({ layer: line, sub });
     });
     waypoints.forEach((wp) => {
+      const ptSub = 'Punkt' + (wp.name ? ': ' + wp.name : '');
       const pt = L.circleMarker(wp.latlng, { radius: Math.max(5, weight + 2.5), color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 })
-        .bindPopup(popupHtml(fileName, 'Punkt' + (wp.name ? ': ' + wp.name : '')))
+        .bindPopup(popupHtml(shownName, ptSub))
         .addTo(group);
       pointRefs.push(pt);
+      popupRefs.push({ layer: pt, sub: ptSub });
     });
 
     group.addTo(map);
-    const entry = { id, name: fileName, color, weight, lines: lineRefs, points: pointRefs, group, bounds: group.getBounds(), length: total };
+    const entry = { id, name: fileName, alias, check: !!st.check && lineRefs.length > 0, color, weight, lines: lineRefs, points: pointRefs, popups: popupRefs, group, bounds: group.getBounds(), length: total };
     loaded.push(entry);
     return entry;
   }
@@ -836,6 +938,9 @@
   function styleEditorHtml(e) {
     const inPalette = palette.includes(e.color.toLowerCase());
     return '<div class="style-editor">' +
+      '<label class="alias-row"><span>Visningsnamn</span>' +
+        '<input type="text" class="alias-input" maxlength="80" autocomplete="off" enterkeyhint="done"' +
+        ' value="' + esc(e.alias || '') + '" placeholder="' + esc(e.name) + '"></label>' +
       '<div class="chips" role="group" aria-label="Färg">' +
         palette.map((c, i) => '<button type="button" class="chip" data-color="' + c + '" style="background:' + c + '"' +
           ' aria-label="' + COLOR_NAMES[i] + '" aria-pressed="' + (c === e.color.toLowerCase()) + '"></button>').join('') +
@@ -845,11 +950,26 @@
       '<label class="thick">Tjocklek' +
         '<input type="range" min="2" max="12" step="0.5" value="' + e.weight + '">' +
         '<output>' + fmtWeight(e.weight) + '</output></label>' +
+      (e.lines.length
+        ? '<label class="check-row"><input type="checkbox" class="check-input"' + (e.check ? ' checked' : '') + '>' +
+          '<span>Använd för am-i-in-gpx-kontroll</span></label>'
+        : '<label class="check-row disabled"><input type="checkbox" disabled>' +
+          '<span>Filen har inga spår att kontrollera mot</span></label>') +
     '</div>';
   }
 
   function wireStyleEditor(li, e) {
     const swatch = li.querySelector('.style-btn .swatch');
+    const aliasInput = li.querySelector('.alias-input');
+    const nameEl = li.querySelector('.name');
+    aliasInput.addEventListener('input', () => {
+      e.alias = aliasInput.value.trim().slice(0, 80);
+      nameEl.textContent = displayName(e);
+      li.querySelector('.zoom').title = 'Zooma till ' + displayName(e);
+      updatePopups(e);
+    });
+    aliasInput.addEventListener('change', saveStyles);
+    aliasInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') aliasInput.blur(); });
     const custom = li.querySelector('.chip.custom');
     const preview = (c) => { e.color = c; applyStyle(e); swatch.style.background = c; };
     const commitColor = (c) => {
@@ -871,6 +991,17 @@
       swatch.style.height = swatchHeight(e.weight) + 'px';
     });
     range.addEventListener('change', saveStyles);
+    const checkInput = li.querySelector('.check-input');
+    if (checkInput) checkInput.addEventListener('change', () => {
+      e.check = checkInput.checked;
+      saveStyles();
+      const zoomBtn = li.querySelector('.zoom');
+      const badge = zoomBtn.querySelector('.check-badge');
+      if (e.check && !badge) zoomBtn.querySelector('.name').insertAdjacentHTML('afterend', CHECK_BADGE);
+      if (!e.check && badge) badge.remove();
+      if (e.check && !watching) startLocate(); // kontrollen behöver din position
+      updateCheck();
+    });
   }
 
   function renderList() {
@@ -882,14 +1013,15 @@
       const open = styleOpenId === e.id;
       li.innerHTML =
         '<button type="button" class="style-btn" data-id="' + e.id + '" aria-expanded="' + open + '"' +
-          ' aria-label="Färg och tjocklek för ' + esc(e.name) + '" title="Färg och tjocklek">' +
+          ' aria-label="Namn, färg och tjocklek för ' + esc(displayName(e)) + '" title="Namn, färg och tjocklek">' +
           '<span class="swatch" style="background:' + e.color + ';height:' + swatchHeight(e.weight) + 'px"></span></button>' +
-        '<button type="button" class="zoom" title="Zooma till ' + esc(e.name) + '">' +
-          '<span class="name">' + esc(e.name) + '</span>' +
+        '<button type="button" class="zoom" title="Zooma till ' + esc(displayName(e)) + '">' +
+          '<span class="name">' + esc(displayName(e)) + '</span>' +
+          (e.check ? CHECK_BADGE : '') +
           (e.length ? '<span class="meta">' + fmtDist(e.length) + '</span>' : '') +
         '</button>' +
-        orderButtons('gpx', e.id, idx, n, e.name) +
-        '<button type="button" class="remove" aria-label="Ta bort ' + esc(e.name) + '">&times;</button>' +
+        orderButtons('gpx', e.id, idx, n, displayName(e)) +
+        '<button type="button" class="remove" aria-label="Ta bort ' + esc(displayName(e)) + '">&times;</button>' +
         (open ? styleEditorHtml(e) : '');
       li.querySelector('.style-btn').addEventListener('click', () => {
         styleOpenId = open ? null : e.id;
@@ -907,6 +1039,7 @@
     $('sheetTitle').textContent = loaded.length === 1 ? '1 fil' : loaded.length + ' filer';
     $('hint').hidden = loaded.length > 0;
     $('sheetNote').hidden = loaded.length < 2;
+    updateCheck();
   }
 
   $('toggleList').addEventListener('click', (ev) => {
@@ -939,6 +1072,57 @@
     handleFiles(e.dataTransfer.files);
   });
 
+  /* ---------- am-i-in-gpx-kontroll ---------- */
+  const CHECK_BADGE = '<span class="check-badge" title="Används för am-i-in-gpx-kontrollen" aria-label="kontrolleras">' +
+    '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2">' +
+    '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></span>';
+
+  // Spåret behandlas som ett område: första och sista punkten binds ihop (strålkastning)
+  function pointInRing(p, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[i], b = ring[j];
+      if ((a.lat > p.lat) !== (b.lat > p.lat) &&
+          p.lng < (b.lng - a.lng) * (p.lat - a.lat) / (b.lat - a.lat) + a.lng) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  function updateCheck() {
+    const tb = document.querySelector('.titlebar');
+    const stateEl = $('checkState');
+    const marked = loaded.filter((e) => e.check && e.lines.length);
+    tb.classList.remove('is-in', 'is-out');
+    if (!marked.length) {
+      stateEl.textContent = '';
+      tb.title = '';
+      lastInside = null;
+      return;
+    }
+    if (!lastPos) {
+      stateEl.textContent = '· väntar på position';
+      tb.title = 'Slå på din position för att kontrollera';
+      lastInside = null;
+      return;
+    }
+    const inside = marked.some((e) => e.lines.some(({ line }) => pointInRing(lastPos, line.getLatLngs())));
+    tb.classList.add(inside ? 'is-in' : 'is-out');
+    stateEl.textContent = inside ? '· Ja' : '· Nej'; // svar på frågan i appens namn
+    tb.title = inside ? 'Du är inne i ett markerat GPX-område' : 'Du är utanför de markerade GPX-områdena';
+    if (lastInside !== null && lastInside !== inside) {
+      toast(inside ? 'Du är nu inne i området.' : 'Du har lämnat området.');
+      if (!inside && navigator.vibrate) navigator.vibrate(200);
+    }
+    lastInside = inside;
+  }
+
+  map.on('locationfound', (e) => {
+    lastPos = e.latlng;
+    updateCheck();
+  });
+
   /* ---------- Min position ---------- */
   const locateBtn = $('locateBtn');
   let watching = false;
@@ -949,6 +1133,8 @@
   function stopLocate() {
     map.stopLocate();
     watching = false;
+    lastPos = null;
+    updateCheck();
     locateBtn.setAttribute('aria-pressed', 'false');
     locateBtn.classList.remove('locating');
     if (meMarker) { map.removeLayer(meMarker); meMarker = null; }
@@ -965,13 +1151,18 @@
       stopLocate();
       return;
     }
+    startLocate();
+  });
+
+  function startLocate() {
+    if (watching) return;
     if (!('geolocation' in navigator)) { toast('Webbläsaren kan inte visa din position.'); return; }
     watching = true;
     firstFix = true;
     locateBtn.setAttribute('aria-pressed', 'true');
     locateBtn.classList.add('locating');
     map.locate({ watch: true, enableHighAccuracy: true, setView: false, maximumAge: 5000, timeout: 20000 });
-  });
+  }
 
   map.on('locationfound', (e) => {
     locateBtn.classList.remove('locating');
@@ -1018,6 +1209,42 @@
   const wmsPick = $('wmsPick');
   const wmsLayerList = $('wmsLayerList');
   const wmsAdded = []; // { id, cfg, layer }
+  let legendOpen = false;
+
+  function renderLegend() {
+    const btn = $('legendBtn');
+    const panel = $('legendPanel');
+    btn.hidden = !wmsAdded.some((e) => e.cfg.legend);
+    if (btn.hidden) legendOpen = false;
+    btn.setAttribute('aria-expanded', String(legendOpen));
+    panel.hidden = !legendOpen;
+    document.body.classList.toggle('legend-open', legendOpen);
+    if (!legendOpen) return;
+    const body = $('legendBody');
+    body.innerHTML = '';
+    const items = wmsAdded.slice().reverse().filter((e) => e.cfg.legend && map.hasLayer(e.layer));
+    if (!items.length) {
+      body.innerHTML = '<p class="layer-meta" style="margin:0">Slå på ett WMS-lager för att se dess teckenförklaring.</p>';
+      return;
+    }
+    items.forEach((e) => {
+      const sec = document.createElement('section');
+      sec.className = 'legend-item';
+      sec.innerHTML = '<div class="legend-title">' + esc(e.cfg.title) + '</div>' +
+        '<img alt="Teckenförklaring för ' + esc(e.cfg.title) + '" src="' + esc(e.cfg.legend) + '">';
+      const img = sec.querySelector('img');
+      img.addEventListener('error', () => {
+        const msg = document.createElement('p');
+        msg.className = 'layer-meta';
+        msg.style.margin = '0';
+        msg.textContent = 'Teckenförklaringen kunde inte laddas.';
+        img.replaceWith(msg);
+      });
+      body.appendChild(sec);
+    });
+  }
+  $('legendBtn').addEventListener('click', () => { legendOpen = !legendOpen; renderLegend(); });
+  $('legendClose').addEventListener('click', () => { legendOpen = false; renderLegend(); $('legendBtn').focus(); });
   let wmsNextId = 1;
   let wmsCaps = null;  // { base, version, format, layers }
 
@@ -1055,6 +1282,48 @@
     return '';
   }
 
+  // Teckenförklaring från lagrets stil (LegendURL)
+  function fixUrl(h) {
+    h = h.trim();
+    if (!h.includes('&') && /%26/i.test(h)) h = h.replace(/%26/gi, '&'); // vissa ArcGIS-servrar kodar &-tecknen
+    if (location.protocol === 'https:' && /^http:\/\//i.test(h)) h = 'https://' + h.slice(7);
+    return h;
+  }
+  function legendUrl(el) {
+    const styles = Array.from(el.children).filter((c) => c.localName === 'Style');
+    for (const st of styles) {
+      const lu = Array.from(st.children).find((c) => c.localName === 'LegendURL');
+      const or = lu && byTag(lu, 'OnlineResource')[0];
+      const href = or && (or.getAttribute('xlink:href') || or.getAttributeNS('http://www.w3.org/1999/xlink', 'href'));
+      if (href) return fixUrl(href);
+    }
+    return null;
+  }
+  function buildLegendUrl(base, name, version) {
+    return base + L.Util.getParamString({
+      SERVICE: 'WMS', REQUEST: 'GetLegendGraphic', VERSION: version || '1.3.0', FORMAT: 'image/png', LAYER: name
+    }, base);
+  }
+
+  // queryable ärvs från överliggande lager om det inte anges
+  function isQueryable(el) {
+    for (let n = el; n && n.localName === 'Layer'; n = n.parentElement) {
+      const a = n.getAttribute('queryable');
+      if (a !== null) return a === '1' || a === 'true';
+    }
+    return false;
+  }
+  const INFO_PREF = ['application/json', 'application/geo+json', 'application/geojson', 'application/vnd.geo+json',
+    'text/html', 'application/vnd.ogc.gml', 'text/xml', 'application/vnd.ogc.wms_xml', 'text/plain'];
+  function pickInfoFormat(list) {
+    for (const pref of INFO_PREF) {
+      const f = list.find((x) => x.toLowerCase() === pref);
+      if (f) return f;
+    }
+    return list.find((f) => /json/i.test(f)) || list.find((f) => /html/i.test(f)) ||
+           list.find((f) => /xml|gml/i.test(f)) || list.find((f) => /plain/i.test(f)) || null;
+  }
+
   function parseCaps(text) {
     const xml = new DOMParser().parseFromString(text, 'application/xml');
     if (xml.getElementsByTagName('parsererror').length) throw new Error('svaret är inte giltig XML');
@@ -1069,6 +1338,10 @@
     const getMap = byTag(xml, 'GetMap')[0];
     const formats = getMap ? byTag(getMap, 'Format').map((f) => f.textContent.trim()) : [];
     const format = formats.includes('image/png') ? 'image/png' : (formats.find((f) => /png/i.test(f)) || 'image/png');
+    const gfi = byTag(xml, 'GetFeatureInfo')[0];
+    const infoFormats = gfi ? byTag(gfi, 'Format').map((f) => f.textContent.trim()) : [];
+    const infoFormat = pickInfoFormat(infoFormats);
+    const htmlInfo = infoFormats.some((f) => f.toLowerCase() === 'text/html');
 
     const layers = byTag(xml, 'Layer').map((el) => {
       const name = childText(el, 'Name');
@@ -1089,12 +1362,15 @@
         title: childText(el, 'Title') || name,
         crs,
         maxScale: parseFloat(childText(el, 'MaxScaleDenominator')) || null,
-        minScale: parseFloat(childText(el, 'MinScaleDenominator')) || null
+        minScale: parseFloat(childText(el, 'MinScaleDenominator')) || null,
+        queryable: isQueryable(el),
+        legend: legendUrl(el)
       };
     }).filter(Boolean);
 
     if (!layers.length) throw new Error('tjänsten listar inga lager');
-    return { version, format, layers };
+    const legendGraphic = byTag(xml, 'GetLegendGraphic').length > 0;
+    return { version, format, infoFormat, htmlInfo, legendGraphic, layers };
   }
 
   async function fetchCaps() {
@@ -1193,7 +1469,7 @@
     list.innerHTML = '';
     const n = wmsAdded.length;
     wmsAdded.slice().reverse().forEach((e, idx) => {
-      const hint = zoomHint(e.cfg);
+      const hint = [zoomHint(e.cfg), e.cfg.queryable ? 'tryck i kartan för info' : ''].filter(Boolean).join(' · ');
       const li = document.createElement('li');
       li.innerHTML =
         '<div class="added-top">' +
@@ -1218,6 +1494,7 @@
       list.appendChild(li);
     });
     $('wmsAddedWrap').hidden = wmsAdded.length === 0;
+    renderLegend();
   }
 
   // zIndex följer arrayens ordning; lagerväljaren visar översta först
@@ -1243,7 +1520,169 @@
     } catch (_) {}
     applyWmsOrder();
     renderWmsAdded();
+    // Lager sparade före informationsstödet saknar uppgiften; läs den från tjänsten
+    const unknown = wmsAdded.filter((e) => e.cfg.queryable == null || e.cfg.legend === undefined);
+    if (unknown.length) refreshQueryInfo(unknown);
   }
+
+  async function refreshQueryInfo(entries) {
+    const byUrl = {};
+    entries.forEach((e) => { (byUrl[e.cfg.url] = byUrl[e.cfg.url] || []).push(e); });
+    for (const url of Object.keys(byUrl)) {
+      try {
+        const u = new URL(url);
+        u.searchParams.set('SERVICE', 'WMS');
+        u.searchParams.set('REQUEST', 'GetCapabilities');
+        const res = await fetch(u.toString());
+        if (!res.ok) continue;
+        const caps = parseCaps(await res.text());
+        byUrl[url].forEach((e) => {
+          const names = e.cfg.layers.split(',').map((x) => x.trim());
+          const found = caps.layers.filter((l) => names.includes(l.name));
+          e.cfg.queryable = !!(caps.infoFormat && found.some((l) => l.queryable));
+          e.cfg.infoFormat = caps.infoFormat;
+          e.cfg.htmlInfo = caps.htmlInfo;
+          const first = found[0];
+          e.cfg.legend = (first && first.legend) ||
+            (first && caps.legendGraphic ? buildLegendUrl(url, first.name, caps.version) : null);
+        });
+      } catch (_) {
+        byUrl[url].forEach((e) => {
+          if (e.cfg.queryable == null) e.cfg.queryable = false;
+          if (e.cfg.legend === undefined) e.cfg.legend = null;
+        });
+      }
+    }
+    saveWms();
+    renderWmsAdded();
+  }
+
+  /* ---------- Information vid klick (GetFeatureInfo) ---------- */
+  const FI_SIZE = 101;
+  const FI_HALF = 50;
+
+  function featureInfoUrl(cfg, latlng, format) {
+    // Ett litet fönster runt klickpunkten i kartans aktuella skala
+    const p = map.latLngToContainerPoint(latlng);
+    const sw = map.containerPointToLatLng([p.x - FI_HALF, p.y + FI_HALF]);
+    const ne = map.containerPointToLatLng([p.x + FI_HALF, p.y - FI_HALF]);
+    const version = cfg.version || '1.3.0';
+    const v13 = version >= '1.3';
+    let bbox;
+    if (cfg.crs === 'EPSG:4326') {
+      bbox = v13 ? [sw.lat, sw.lng, ne.lat, ne.lng] : [sw.lng, sw.lat, ne.lng, ne.lat];
+    } else {
+      const a = L.CRS.EPSG3857.project(sw);
+      const b = L.CRS.EPSG3857.project(ne);
+      bbox = [a.x, a.y, b.x, b.y];
+    }
+    const params = {
+      SERVICE: 'WMS', VERSION: version, REQUEST: 'GetFeatureInfo',
+      LAYERS: cfg.layers, QUERY_LAYERS: cfg.layers, STYLES: '',
+      FORMAT: cfg.format || 'image/png', TRANSPARENT: 'true',
+      BBOX: bbox.join(','), WIDTH: FI_SIZE, HEIGHT: FI_SIZE,
+      INFO_FORMAT: format, FEATURE_COUNT: 10
+    };
+    params[v13 ? 'CRS' : 'SRS'] = cfg.crs || 'EPSG:3857';
+    params[v13 ? 'I' : 'X'] = FI_HALF;
+    params[v13 ? 'J' : 'Y'] = FI_HALF;
+    return cfg.url + L.Util.getParamString(params, cfg.url);
+  }
+
+  function rowsTable(obj) {
+    const keys = Object.keys(obj).filter((k) => obj[k] !== null && obj[k] !== '' && typeof obj[k] !== 'object');
+    if (!keys.length) return '';
+    return '<table class="fi-table">' +
+      keys.map((k) => '<tr><th>' + esc(k) + '</th><td>' + esc(String(obj[k])) + '</td></tr>').join('') +
+      '</table>';
+  }
+
+  const GEOM_TAGS = ['pos', 'posList', 'coordinates', 'lowerCorner', 'upperCorner'];
+  function parseInfo(text, fmt) {
+    if (/json/i.test(fmt)) {
+      const j = JSON.parse(text);
+      const feats = Array.isArray(j.features) ? j.features : (j.type === 'Feature' ? [j] : []);
+      return feats.map((f) => rowsTable(f.properties || {})).filter(Boolean);
+    }
+    if (/html/i.test(fmt)) {
+      // Tolkas utan att köras; visas sedan i en sandlåda utan skript
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      const plain = ((doc.body && doc.body.textContent) || '').replace(/\s+/g, ' ').trim();
+      return plain ? ['<iframe class="fi-frame" sandbox="" title="Information" srcdoc="' + esc(text) + '"></iframe>'] : [];
+    }
+    if (/xml|gml/i.test(fmt)) {
+      const xml = new DOMParser().parseFromString(text, 'application/xml');
+      if (xml.getElementsByTagName('parsererror').length) return [];
+      const root = xml.documentElement;
+      if (/Exception/i.test(root.localName)) throw new Error(root.textContent.trim().slice(0, 160));
+      const out = [];
+      Array.from(xml.getElementsByTagName('*')).forEach((el) => {
+        if (el === root) return;
+        const kids = Array.from(el.children);
+        const o = {};
+        if (!kids.length && el.attributes.length) {
+          // t.ex. Esris <FIELDS namn="värde" …/>
+          Array.from(el.attributes).forEach((a) => {
+            if (!/^(xmlns|xsi:)|^(gml:id|fid)$/i.test(a.name)) o[a.name.replace(/^.*:/, '')] = a.value;
+          });
+        } else if (kids.length && kids.every((k) => !k.children.length)) {
+          kids.forEach((k) => {
+            const v = k.textContent.trim();
+            if (v && !GEOM_TAGS.includes(k.localName)) o[k.localName] = v;
+          });
+        }
+        const t = rowsTable(o);
+        if (t) out.push(t);
+      });
+      return out;
+    }
+    const t = text.trim();
+    if (!t || /no (features|results)|returned no results|no information/i.test(t)) return [];
+    return ['<pre class="fi-pre">' + esc(t) + '</pre>'];
+  }
+
+  async function queryLayer(cfg, latlng) {
+    const url = featureInfoUrl(cfg, latlng, cfg.infoFormat);
+    const htmlUrl = cfg.htmlInfo ? featureInfoUrl(cfg, latlng, 'text/html') : null;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('servern svarade ' + res.status);
+      return parseInfo(await res.text(), cfg.infoFormat).join('');
+    } catch (err) {
+      // Tillåter servern inte att svaret läses av skript visas dess HTML-svar direkt i stället
+      if (err instanceof TypeError && htmlUrl) {
+        return '<iframe class="fi-frame" sandbox="" title="Information" src="' + esc(htmlUrl) + '"></iframe>';
+      }
+      return '<div class="pop-sub">Kunde inte hämta information' +
+        (err instanceof TypeError ? ' (tjänsten tillåter det inte från webbläsaren)' : ': ' + esc(err.message)) + '.</div>';
+    }
+  }
+
+  function inZoomRange(cfg) {
+    const { minZ, maxZ } = zoomRange(cfg);
+    const z = map.getZoom();
+    return !((minZ != null && z < minZ) || (maxZ != null && z > maxZ));
+  }
+
+  const infoPopup = L.popup({ maxWidth: 340, minWidth: 240, maxHeight: 360, className: 'fi-popup', autoPanPaddingTopLeft: [10, 70] });
+  let infoSeq = 0;
+  map.on('click', async (e) => {
+    if (typeof measuring !== 'undefined' && measuring) return;
+    // Klick på ett GPX-spår eller en markör visar deras egen popup
+    const t = e.originalEvent && e.originalEvent.target;
+    if (t && t.classList && t.classList.contains('leaflet-interactive')) return;
+    const targets = wmsAdded.slice().reverse()
+      .filter((x) => x.cfg.queryable && x.cfg.infoFormat && map.hasLayer(x.layer) && inZoomRange(x.cfg));
+    if (!targets.length) return;
+    const seq = ++infoSeq;
+    infoPopup.setLatLng(e.latlng).setContent('<div class="pop-sub">Hämtar information …</div>').openOn(map);
+    const results = await Promise.all(targets.map((x) => queryLayer(x.cfg, e.latlng)));
+    if (seq !== infoSeq || !map.hasLayer(infoPopup)) return;
+    const parts = results.map((html, i) => html
+      ? '<section class="fi-section"><div class="pop-file">' + esc(targets[i].cfg.title) + '</div>' + html + '</section>'
+      : '').filter(Boolean);
+    infoPopup.setContent(parts.length ? parts.join('') : '<div class="pop-sub">Ingen information på den här platsen.</div>');
+  });
 
   function afterAdd(entries) {
     applyWmsOrder();
@@ -1267,7 +1706,9 @@
     if (!picked.length) { setStatus('Välj minst ett lager.', true); return; }
     const entries = picked.map((l) => addWmsLayer({
       url: wmsCaps.base, layers: l.name, title: l.title, version: wmsCaps.version, format: wmsCaps.format,
-      crs: l.crs, maxScale: l.maxScale, minScale: l.minScale, opacity: 0.85, visible: true
+      crs: l.crs, maxScale: l.maxScale, minScale: l.minScale, opacity: 0.85, visible: true,
+      queryable: !!(l.queryable && wmsCaps.infoFormat), infoFormat: wmsCaps.infoFormat, htmlInfo: wmsCaps.htmlInfo,
+      legend: l.legend || (wmsCaps.legendGraphic ? buildLegendUrl(wmsCaps.base, l.name, wmsCaps.version) : null)
     }));
     afterAdd(entries);
   });
@@ -1282,13 +1723,15 @@
     if (!names.length) { setStatus('Skriv minst ett lagernamn.', true); return; }
     const entries = names.map((n) => addWmsLayer({
       url: base, layers: n, title: n, version: '1.3.0', format: 'image/png',
-      crs: $('wmsManualCrs').value, opacity: 0.85, visible: true
+      crs: $('wmsManualCrs').value, opacity: 0.85, visible: true, queryable: null
     }));
+    refreshQueryInfo(entries); // försök ta reda på om lagret har klickbar information
     afterAdd(entries);
   });
 
   function openWms() {
     wmsModal.hidden = false;
+    $('wmsClear').hidden = !wmsUrl.value;
     setStatus('');
   }
   function closeWms() {
@@ -1303,6 +1746,18 @@
     if (!cacheModal.hidden) closeCache();
   });
   $('wmsFetch').addEventListener('click', fetchCaps);
+  const wmsClear = $('wmsClear');
+  const syncClear = () => { wmsClear.hidden = !wmsUrl.value; };
+  wmsUrl.addEventListener('input', syncClear);
+  wmsClear.addEventListener('click', () => {
+    wmsUrl.value = '';
+    wmsCaps = null;
+    wmsPick.hidden = true;
+    wmsLayerList.innerHTML = '';
+    setStatus('');
+    syncClear();
+    wmsUrl.focus();
+  });
   wmsUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchCaps(); });
 
   /* ---------- Lokal cache: översikt och tömning ---------- */
